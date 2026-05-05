@@ -39,7 +39,10 @@ type IoController =
       mutable HdmaActive: bool
       mutable HdmaHblank: bool
       // Double speed mode (CGB)
-      mutable DoubleSpeed: bool }
+      mutable DoubleSpeed: bool
+      // Palette cache dirty flags (for PPU optimization)
+      mutable BgPaletteDirty: bool
+      mutable ObjPaletteDirty: bool }
 
     member this.CpuWrite fullAddress value =
         let offset = fullAddress - Io.IoMemoryOffset
@@ -77,6 +80,7 @@ type IoController =
             this.Registers[offset] <- value
         | Io.Bcpd when this.CgbMode ->
             this.BgPaletteRam[int this.BgPaletteIndex] <- value
+            this.BgPaletteDirty <- true
             if this.BgPaletteAutoIncrement then
                 this.BgPaletteIndex <- (this.BgPaletteIndex + 1uy) &&& 0x3Fuy
         | Io.Ocps when this.CgbMode ->
@@ -85,6 +89,7 @@ type IoController =
             this.Registers[offset] <- value
         | Io.Ocpd when this.CgbMode ->
             this.ObjPaletteRam[int this.ObjPaletteIndex] <- value
+            this.ObjPaletteDirty <- true
             if this.ObjPaletteAutoIncrement then
                 this.ObjPaletteIndex <- (this.ObjPaletteIndex + 1uy) &&& 0x3Fuy
         | Io.Hdma1 when this.CgbMode ->
@@ -182,4 +187,6 @@ let createIoController () =
       HdmaLength = 0
       HdmaActive = false
       HdmaHblank = false
-      DoubleSpeed = false }
+      DoubleSpeed = false
+      BgPaletteDirty = true
+      ObjPaletteDirty = true }

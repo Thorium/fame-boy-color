@@ -12,6 +12,8 @@
         <EmbeddedResource Include="Resources\dmg-acid2.bin" CopyToOutputDirectory="PreserveNewest" />
         <EmbeddedResource Include="Resources\cpu_instrs.gb" CopyToOutputDirectory="PreserveNewest" />
         <EmbeddedResource Include="Resources\cpu_instrs.bin" CopyToOutputDirectory="PreserveNewest" />
+        <EmbeddedResource Include="Resources\cgb-acid2.gbc" CopyToOutputDirectory="PreserveNewest" />
+        <EmbeddedResource Include="Resources\cgb-acid2.bin" CopyToOutputDirectory="PreserveNewest" />
     </ItemGroup>
 
     <ItemGroup>

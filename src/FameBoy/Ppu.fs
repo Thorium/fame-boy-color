@@ -1,6 +1,7 @@
 ﻿module FameBoy.Ppu
 
 open System
+open System.Runtime.CompilerServices
 open FameBoy.Interrupts
 open FameBoy.Hardware
 open FameBoy.IoController
@@ -24,7 +25,7 @@ module Shade =
     let ofByte (i: uint8) : Shade = LanguagePrimitives.EnumOfValue(int i)
 
 /// RGB color for GBC mode
-[<Struct>]
+[<IsReadOnly; Struct>]
 type Color = { R: uint8; G: uint8; B: uint8 }
 
 module Color =
@@ -47,6 +48,9 @@ type Ppu =
       // GBC color framebuffers
       ColorFramebuffer: Color array
       ColorBackbuffer: Color array
+      // Cached CGB palette colors (8 palettes × 4 colors = 32 entries each)
+      BgPaletteCache: Color array
+      ObjPaletteCache: Color array
       OamRam: uint8 array
       VideoRam: uint8 array
       IoController: IoController
@@ -103,6 +107,8 @@ let createPpu (memory: Memory) (io: IoController) =
       Backbuffer = Array.create bufferWidth Shade.White
       ColorFramebuffer = Array.create bufferWidth Color.white
       ColorBackbuffer = Array.create bufferWidth Color.white
+      BgPaletteCache = Array.create 32 Color.white
+      ObjPaletteCache = Array.create 32 Color.white
       OamRam = memory.OamRam
       VideoRam = memory.VideoRam
       IoController = io
@@ -137,14 +143,26 @@ module private Palettes =
     let fetchPaletteMaps (io: IoController) =
         parsePaletteData io.Registers[Io.Bgp], parsePaletteData io.Registers[Io.Obp0], parsePaletteData io.Registers[Io.Obp1]
 
-    /// Get a color from CGB palette RAM at a given palette index and color index
-    let getCgbBgColor (io: IoController) paletteNum colorIndex =
-        let offset = paletteNum * 8 + colorIndex * 2
-        Color.fromRgb555 io.BgPaletteRam[offset] io.BgPaletteRam[offset + 1]
+    /// Get a color from CGB palette RAM at a given palette index and color index (cached)
+    let getCgbBgColor (ppu: Ppu) paletteNum colorIndex =
+        let io = ppu.IoController
+        if io.BgPaletteDirty then
+            for p in 0..7 do
+                for c in 0..3 do
+                    let offset = p * 8 + c * 2
+                    ppu.BgPaletteCache[p * 4 + c] <- Color.fromRgb555 io.BgPaletteRam[offset] io.BgPaletteRam[offset + 1]
+            io.BgPaletteDirty <- false
+        ppu.BgPaletteCache[paletteNum * 4 + colorIndex]
 
-    let getCgbObjColor (io: IoController) paletteNum colorIndex =
-        let offset = paletteNum * 8 + colorIndex * 2
-        Color.fromRgb555 io.ObjPaletteRam[offset] io.ObjPaletteRam[offset + 1]
+    let getCgbObjColor (ppu: Ppu) paletteNum colorIndex =
+        let io = ppu.IoController
+        if io.ObjPaletteDirty then
+            for p in 0..7 do
+                for c in 0..3 do
+                    let offset = p * 8 + c * 2
+                    ppu.ObjPaletteCache[p * 4 + c] <- Color.fromRgb555 io.ObjPaletteRam[offset] io.ObjPaletteRam[offset + 1]
+            io.ObjPaletteDirty <- false
+        ppu.ObjPaletteCache[paletteNum * 4 + colorIndex]
 
 open Palettes
 
@@ -449,11 +467,11 @@ module private Scanline =
                             true
 
                     if objWins then
-                        getCgbObjColor io p.CgbPalette p.ColorIndex
+                        getCgbObjColor ppu p.CgbPalette p.ColorIndex
                     else
-                        getCgbBgColor io bgAttrs.BgPalette bgColorIndex
+                        getCgbBgColor ppu bgAttrs.BgPalette bgColorIndex
                 | _ ->
-                    getCgbBgColor io bgAttrs.BgPalette bgColorIndex
+                    getCgbBgColor ppu bgAttrs.BgPalette bgColorIndex
 
             buffer[bufferAddr] <- pixel
 
@@ -516,19 +534,19 @@ module private Scanline =
                     if p.BgPriority && bgEnable then
                         let bgIdx = fetchBg ()
                         if bgIdx <> 0 then
-                            getCgbBgColor io 0 (remapBgColor bgIdx)
+                            getCgbBgColor ppu 0 (remapBgColor bgIdx)
                         else
                             let pal = if p.UseObp1 then obp1 else obp0
-                            getCgbObjColor io (if p.UseObp1 then 1 else 0) (remapObjColor pal p.ColorIndex)
+                            getCgbObjColor ppu (if p.UseObp1 then 1 else 0) (remapObjColor pal p.ColorIndex)
                     else
                         let pal = if p.UseObp1 then obp1 else obp0
-                        getCgbObjColor io (if p.UseObp1 then 1 else 0) (remapObjColor pal p.ColorIndex)
+                        getCgbObjColor ppu (if p.UseObp1 then 1 else 0) (remapObjColor pal p.ColorIndex)
                 | _ ->
                     if bgEnable then
                         let bgIdx = fetchBg ()
-                        getCgbBgColor io 0 (remapBgColor bgIdx)
+                        getCgbBgColor ppu 0 (remapBgColor bgIdx)
                     else
-                        getCgbBgColor io 0 0 // Color 0 = white/transparent
+                        getCgbBgColor ppu 0 0 // Color 0 = white/transparent
 
             buffer[bufferAddr] <- pixel
 
