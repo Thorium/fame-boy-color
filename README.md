@@ -1,4 +1,4 @@
-# Fame Boy
+# Fame Boy - Fame Boy Color
 
 [![CI](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml/badge.svg)](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml)
 
