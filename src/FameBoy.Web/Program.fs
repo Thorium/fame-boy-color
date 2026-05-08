@@ -44,6 +44,7 @@ let linkModeParam =
     | _ -> false
 
 let screenCanvas = getElement "screen" :?> HTMLCanvasElement
+let root = getElement "root"
 let startOverlay = getElement "start-overlay"
 let fpsCounter = getElement "fps-counter"
 let fileUploadButton = getElement "rom-file"
@@ -54,21 +55,29 @@ screenCanvas.height <- Screen.height
 let ctx = screenCanvas.getContext "2d" :?> CanvasRenderingContext2D
 let imageData = ctx.createImageData (Screen.width, Screen.height)
 
-// P2 canvas for link mode
-let screen2Canvas =
+// P2 canvases for link mode. Small layouts reuse the inline screen,
+// wide layouts render into a second shell.
+let screen2Canvases =
     if linkModeParam then
-        let el = getElement "screen2" :?> HTMLCanvasElement
-        el.width <- Screen.width
-        el.height <- Screen.height
-        Some el
+        [ "screen2"; "screen2-wide" ]
+        |> List.choose (fun id ->
+            match document.getElementById id with
+            | null -> None
+            | el ->
+                let canvas = el :?> HTMLCanvasElement
+                canvas.width <- Screen.width
+                canvas.height <- Screen.height
+                Some canvas)
     else
-        None
+        []
 
 let ctx2 =
-    screen2Canvas |> Option.map (fun c -> c.getContext "2d" :?> CanvasRenderingContext2D)
+    screen2Canvases |> List.map (fun c -> c.getContext "2d" :?> CanvasRenderingContext2D)
 
 let imageData2 =
-    ctx2 |> Option.map (fun c -> c.createImageData (Screen.width, Screen.height))
+    ctx2
+    |> List.tryHead
+    |> Option.map (fun c -> c.createImageData (Screen.width, Screen.height))
 
 let shades =
     [| (186uy, 218uy, 85uy)
@@ -109,7 +118,7 @@ let startEmulator bytes =
 
     startOverlay?classList?add "hidden"
 
-    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1 =
+    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1, _ =
         try
             createEmulator bytes 4096 getJoypadState
         with ex ->
@@ -119,9 +128,12 @@ let startEmulator bytes =
     // In link mode, create a second emulator instance
     let linkState =
         if linkModeParam then
-            let ppu2, _apu2, serial2, io2, stepEmulator2, applyJoypadState2 =
+            let ppu2, _apu2, serial2, io2, stepEmulator2, applyJoypadState2, _ =
                 createEmulator bytes 4096 getJoypadState2
-
+            // Link arbitration: shared arbiter, dynamic master/slave
+            // assignment on first SC=0x81 write from either device.
+            // See Serial.fs.
+            pairLink serial1 io1 serial2 io2
             Some (ppu2, serial2, io2, stepEmulator2, applyJoypadState2)
         else
             None
@@ -133,10 +145,11 @@ let startEmulator bytes =
         loadImageData ppu1 imageData
         ctx.putImageData (imageData, 0, 0)
 
-        match linkState, ctx2, imageData2 with
-        | Some (ppu2, _, _, _, _), Some c2, Some img2 ->
+        match linkState, imageData2 with
+        | Some (ppu2, _, _, _, _), Some img2 ->
             loadImageData ppu2 img2
-            c2.putImageData (img2, 0, 0)
+            for c2 in ctx2 do
+                c2.putImageData (img2, 0, 0)
         | _ -> ()
     
     let targetCyclesPerMs = float cpuFrequency / 1000.0
@@ -261,9 +274,37 @@ muteButton.addEventListener (
 
 // Show/hide link mode UI
 if linkModeParam then
+    root?classList?add "link-mode"
+
     match document.getElementById "link-container" with
     | null -> ()
     | el -> el?classList?remove "hidden"
+
+    match document.getElementById "link-shell" with
+    | null -> ()
+    | el -> el?classList?remove "hidden"
+
+    match document.getElementById "p2-controls" with
+    | null -> ()
+    | el -> el?classList?remove "hidden"
+
+// Link mode toggle
+let linkModeToggle = document.getElementById "link-mode-toggle" :?> HTMLInputElement
+linkModeToggle.``checked`` <- linkModeParam
+
+linkModeToggle.addEventListener (
+    "change",
+    fun _ ->
+        let urlParams = URLSearchParams.Create(window.location.search)
+
+        if linkModeToggle.``checked`` then
+            urlParams.set ("link", "1")
+        else
+            urlParams.delete "link"
+
+        let newUrl = $"%s{window.location.pathname}?%s{urlParams.ToString()}"
+        window.location.replace newUrl
+)
 
 // Pre-fetch the default ROM, then wait for user interaction to start
 // User interaction on the page is needed to start Web Audio

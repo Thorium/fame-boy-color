@@ -11,7 +11,7 @@ open FameBoy.Startup
 open FameBoy.Timer
 
 
-let createEmulator bytes ringBufferSize getJoypadState =
+let createEmulatorWithMemory bytes ringBufferSize getJoypadState =
     let timer = createTimer ()
     let io = createIoController ()
     let memory = createMemory bytes io
@@ -71,4 +71,10 @@ let createEmulator bytes ringBufferSize getJoypadState =
 
         mCycles
 
-    ppu, apu, serial, io, stepper, applyJoypadState
+    ppu, apu, serial, io, stepper, applyJoypadState, cpu, memory
+
+let createEmulator bytes ringBufferSize getJoypadState =
+    let ppu, apu, serial, io, stepper, applyJoypadState, cpu, _ =
+        createEmulatorWithMemory bytes ringBufferSize getJoypadState
+
+    ppu, apu, serial, io, stepper, applyJoypadState, cpu

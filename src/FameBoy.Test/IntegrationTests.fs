@@ -21,7 +21,7 @@ let private defaultJoypadState: JoypadState =
 [<Test>]
 let ``dmg-acid2 framebuffer matches expected output after 150000 CPU cycles`` () =
     let rom = Path.Combine("Resources", "dmg-acid2.gb") |> File.ReadAllBytes
-    let ppu, _, _, _, stepEmulator, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
+    let ppu, _, _, _, stepEmulator, _, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
 
     for _ in 0..150000 do
         stepEmulator () |> ignore
@@ -34,7 +34,7 @@ let ``dmg-acid2 framebuffer matches expected output after 150000 CPU cycles`` ()
 [<Test>]
 let ``cpu_instrs serial output contains Passed after 25000000 CPU cycles`` () =
     let rom = Path.Combine("Resources", "cpu_instrs.gb") |> File.ReadAllBytes
-    let _, _, serial, _, stepEmulator, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
+    let _, _, serial, _, stepEmulator, _, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
 
     let serialOutput = StringBuilder()
     let mutable lastIsTransferring = false
@@ -54,7 +54,7 @@ let ``cpu_instrs serial output contains Passed after 25000000 CPU cycles`` () =
 [<Test>]
 let ``cgb-acid2 color framebuffer matches expected output after 150000 CPU cycles`` () =
     let rom = Path.Combine("Resources", "cgb-acid2.gbc") |> File.ReadAllBytes
-    let ppu, _, _, _, stepEmulator, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
+    let ppu, _, _, _, stepEmulator, _, _ = createEmulator rom 4096 (fun () -> defaultJoypadState)
 
     for _ in 0..150000 do
         stepEmulator () |> ignore

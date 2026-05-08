@@ -10,7 +10,7 @@ let mutable fullscreen = false
 
 let mutable linkMode = false
 
-let enableDebugView = Debugger.IsAttached
+let enableDebugView = Debugger.IsAttached && not linkMode
 
 let width =
     if enableDebugView then

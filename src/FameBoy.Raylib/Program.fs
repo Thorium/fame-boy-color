@@ -2,6 +2,7 @@
 open System.IO
 open FameBoy.Apu
 open FameBoy.Emulator
+open FameBoy.Hardware
 open FameBoy.Joypad
 open FameBoy.Raylib
 open FameBoy.Raylib.Graphics.GraphicsPipeline
@@ -85,6 +86,16 @@ let tryQueueAudio (apu: Apu) stepEmulator =
         updateAudioStream audioStream audioBuffer
 
 let bytes = File.ReadAllBytes romPath
+let savePath = Path.ChangeExtension(romPath, ".sav")
+
+let tryLoadSave (ram: byte array) =
+    if ram.Length > 0 && File.Exists savePath then
+        let saveBytes = File.ReadAllBytes savePath
+        Array.Copy(saveBytes, ram, min saveBytes.Length ram.Length)
+
+let writeSave (ram: byte array) =
+    if ram.Length > 0 then
+        File.WriteAllBytes(savePath, ram)
 
 let mutable joypadState: JoypadState =
     { Up = false
@@ -100,11 +111,18 @@ let mutable joypadState2: JoypadState = joypadState
 
 if Config.linkMode then
     // Link mode: two emulators side-by-side with serial link
-    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1 =
-        createEmulator bytes 4096 (fun () -> joypadState)
+    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1, _, memory1 =
+        createEmulatorWithMemory bytes 4096 (fun () -> joypadState)
 
-    let ppu2, _apu2, serial2, io2, stepEmulator2, applyJoypadState2 =
-        createEmulator bytes 4096 (fun () -> joypadState2)
+    let ppu2, _apu2, serial2, io2, stepEmulator2, applyJoypadState2, _, memory2 =
+        createEmulatorWithMemory bytes 4096 (fun () -> joypadState2)
+
+    tryLoadSave memory1.Cartridge.Ram
+    tryLoadSave memory2.Cartridge.Ram
+
+    // Link arbitration: shared arbiter, dynamic master/slave assignment
+    // on first SC=0x81 write from either device. See Serial.fs.
+    pairLink serial1 io1 serial2 io2
 
     Raylib.PlayAudioStream audioStream
 
@@ -114,7 +132,7 @@ if Config.linkMode then
     while (not (windowShouldClose ())) do
         if isKeyPressed KeyboardKey.F11 then
             Config.fullscreen <- not Config.fullscreen
-            Raylib.ToggleFullscreen()
+            Raylib.ToggleBorderlessWindowed()
 
         joypadState <- getJoypadState ()
         joypadState2 <- getJoypadStateP2 ()
@@ -149,18 +167,22 @@ if Config.linkMode then
 
         endDrawing ()
 
+    writeSave memory1.Cartridge.Ram
+    writeSave memory2.Cartridge.Ram
     close ()
 else
     // Single player mode
-    let ppu, apu, _, _, stepEmulator, applyJoypadState =
-        createEmulator bytes 4096 (fun () -> joypadState)
+    let ppu, apu, _, _, stepEmulator, applyJoypadState, _, memory =
+        createEmulatorWithMemory bytes 4096 (fun () -> joypadState)
+
+    tryLoadSave memory.Cartridge.Ram
 
     Raylib.PlayAudioStream audioStream
 
     while (not (windowShouldClose ())) do
         if isKeyPressed KeyboardKey.F11 then
             Config.fullscreen <- not Config.fullscreen
-            Raylib.ToggleFullscreen()
+            Raylib.ToggleBorderlessWindowed()
 
         joypadState <- getJoypadState ()
         applyJoypadState joypadState
@@ -180,4 +202,5 @@ else
 
         endDrawing ()
 
+    writeSave memory.Cartridge.Ram
     close ()

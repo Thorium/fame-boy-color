@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml/badge.svg)](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml)
 
-A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser [here](https://nickkossolapov.github.io/fame-boy/)!
+A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser [here](https://nickkossolapov.github.io/fame-boy/)! A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy](https://thorium.github.io/fame-boy/).
 
 ![pokemon demo](./assets/pokemon.gif) ![zelda demo](./assets/zelda.gif)
 
@@ -11,7 +11,8 @@ A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser 
 - Supports most of the popular Game Boy and Game Boy Color games with sound (incl. Tetris, Pokémon, Mario, Zelda, and more!).
 - **Game Boy Color support** with full-color rendering, VRAM/WRAM banking, HDMA transfers, and compatibility palettes for DMG games.
 - **Link cable multiplayer** — run two emulator instances side-by-side with serial data exchange for local multiplayer.
-- Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/).
+- **Battery-backed `.sav` support** on desktop for cartridges with SRAM.
+- Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/). A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy](https://thorium.github.io/fame-boy/).
 - Cross-platform too, it runs natively on Windows, macOS, and Linux (and others) with [Raylib](https://www.raylib.com/).
 - Zero-dependency [F# core](./src/FameBoy) with robust typing and built with functional programming in mind.
 
@@ -30,7 +31,7 @@ accuracy or maximum performance.
 There are still a few gaps with the real hardware that I may or may not get to (but would like to).
 
 - Limited emulator configuration (no fast-forward, key remapping, or custom palettes).
-- Missing battery saves (SRAM) and save states.
+- Missing web save persistence and save states.
 - Hardware inaccuracies (e.g. CPU instruction-level rather than M-cycle-level timing, scanline-based rendering rather than pixel FIFOs, and missing a few hardware features/bugs).
 
 ### Repo structure

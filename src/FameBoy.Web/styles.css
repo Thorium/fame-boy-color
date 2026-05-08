@@ -66,8 +66,15 @@ body {
     align-items: center;
 }
 
-.shell {
+.shell-group {
     grid-column: 2;
+    margin: 20px;
+    display: flex;
+    align-items: flex-start;
+    gap: 20px;
+}
+
+.shell {
     margin: 20px;
 }
 
@@ -320,6 +327,10 @@ body {
     zoom: var(--s);
 }
 
+.shell-link {
+    display: none;
+}
+
 .screen-border {
     background: var(--color-bezel);
     border-radius: 15px 15px 60px 15px;
@@ -330,7 +341,7 @@ body {
     align-items: flex-start;
 }
 
-#screen, #screen2 {
+#screen, #screen2, #screen2-wide {
     image-rendering: pixelated;
     height: 180px;
     aspect-ratio: 10/9;
@@ -368,6 +379,30 @@ body {
     height: 220px;
     perspective: 150px;
     margin-bottom: 30px;
+}
+
+.buttons-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.buttons-placeholder::before {
+    content: "";
+    width: 125px;
+    height: 12px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-start-select) 80%, transparent);
+    box-shadow: 0 34px 0 color-mix(in srgb, var(--color-start-select) 70%, transparent);
+    transform: rotate(-25deg) translateY(12px);
+}
+
+.link-shell-badge {
+    position: absolute;
+    bottom: 38px;
+    font-size: 0.75rem;
+    letter-spacing: 0.24em;
+    color: color-mix(in srgb, var(--color-d-pad) 65%, transparent);
 }
 
 .d-pad {
@@ -535,6 +570,10 @@ button:focus-visible {
         justify-content: center;
     }
 
+    .shell-group {
+        margin: 20px 20px 0;
+    }
+
     .sidebar {
         display: grid;
         grid-template-columns: auto auto;
@@ -566,5 +605,19 @@ button:focus-visible {
         order: 4;
         grid-column: 1 / span 2;
         text-align: center;
+    }
+}
+
+@media (min-width: 1200px) {
+    #root.link-mode #link-container {
+        display: none;
+    }
+
+    #root.link-mode .shell-link {
+        display: flex;
+    }
+
+    #root.link-mode .shell {
+        margin: 0;
     }
 }
