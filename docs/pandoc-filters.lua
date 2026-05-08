@@ -22,9 +22,9 @@ function Meta(meta)
     f:close()
     local style = pandoc.RawBlock("html", "<style>\n" .. css .. "\n</style>")
     local favicon = pandoc.RawBlock("html",
-      '<link rel="icon" type="image/x-icon" href="/fame-boy/favicon.ico">\n' ..
-      '<link rel="icon" type="image/png" sizes="32x32" href="/fame-boy/favicon-32x32.png">\n' ..
-      '<link rel="icon" type="image/png" sizes="16x16" href="/fame-boy/favicon-16x16.png">')
+      '<link rel="icon" type="image/x-icon" href="/fame-boy-color/favicon.ico">\n' ..
+      '<link rel="icon" type="image/png" sizes="32x32" href="/fame-boy-color/favicon-32x32.png">\n' ..
+      '<link rel="icon" type="image/png" sizes="16x16" href="/fame-boy-color/favicon-16x16.png">')
     local og = pandoc.RawBlock("html",
       '<meta name="description" content="' .. DESC .. '">\n' ..
       '<meta property="og:title" content="' .. TITLE .. '">\n' ..

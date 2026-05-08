@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml/badge.svg)](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml)
 
-A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser [here](https://nickkossolapov.github.io/fame-boy/)! A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy](https://thorium.github.io/fame-boy/).
+A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser [here](https://nickkossolapov.github.io/fame-boy/)! A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy-color](https://thorium.github.io/fame-boy-color/).
 
 ![pokemon demo](./assets/pokemon.gif) ![zelda demo](./assets/zelda.gif)
 
@@ -12,7 +12,7 @@ A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser 
 - **Game Boy Color support** with full-color rendering, VRAM/WRAM banking, HDMA transfers, and compatibility palettes for DMG games.
 - **Link cable multiplayer** — run two emulator instances side-by-side with serial data exchange for local multiplayer.
 - **Battery-backed `.sav` support** on desktop for cartridges with SRAM.
-- Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/). A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy](https://thorium.github.io/fame-boy/).
+- Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/). A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy-color](https://thorium.github.io/fame-boy-color/).
 - Cross-platform too, it runs natively on Windows, macOS, and Linux (and others) with [Raylib](https://www.raylib.com/).
 - Zero-dependency [F# core](./src/FameBoy) with robust typing and built with functional programming in mind.
 
