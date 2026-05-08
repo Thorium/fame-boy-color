@@ -18,13 +18,15 @@ A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser 
 
 ### About
 
-I wrote about the architecture and my general experience in a blog post: [I built a Game Boy emulator in F#](https://nickkossolapov.github.io/fame-boy/building-a-game-boy-emulator-in-fsharp/)
+Nick wrote about the architecture and his general experience in a blog post: [I built a Game Boy emulator in F#](https://nickkossolapov.github.io/fame-boy/building-a-game-boy-emulator-in-fsharp/)
 
-This project was a way for me to learn more about computer hardware. The original Game Boy felt like the perfect target: well-defined in
+This project was a way for him to learn more about computer hardware. The original Game Boy felt like the perfect target: well-defined in
 scope while still complex enough to learn about a real system, and chock-full of nostalgia.
 
-Along the way, I mostly optimised for readability, idiomatic F#, and having fun in the process, rather than chasing perfect hardware
+Along the way, he mostly optimised for readability, idiomatic F#, and having fun in the process, rather than chasing perfect hardware
 accuracy or maximum performance.
+
+This branch is extension with more features over the original demo.
 
 ### Limitations
 
