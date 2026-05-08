@@ -381,28 +381,18 @@ body {
     margin-bottom: 30px;
 }
 
-.buttons-placeholder {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.buttons-placeholder::before {
-    content: "";
-    width: 125px;
-    height: 12px;
-    border-radius: 999px;
-    background: color-mix(in srgb, var(--color-start-select) 80%, transparent);
-    box-shadow: 0 34px 0 color-mix(in srgb, var(--color-start-select) 70%, transparent);
-    transform: rotate(-25deg) translateY(12px);
-}
-
 .link-shell-badge {
     position: absolute;
-    bottom: 38px;
+    bottom: 18px;
+    width: 100%;
+    text-align: center;
     font-size: 0.75rem;
     letter-spacing: 0.24em;
     color: color-mix(in srgb, var(--color-d-pad) 65%, transparent);
+}
+
+.buttons-link {
+    margin-bottom: 30px;
 }
 
 .d-pad {
@@ -419,19 +409,23 @@ body {
     background: var(--color-d-pad);
 }
 
-.d-pad:has(#up-button:active) {
+.d-pad:has(#up-button:active),
+.d-pad:has(#p2-up-button:active) {
     transform: rotateX(2deg);
 }
 
-.d-pad:has(#down-button:active) {
+.d-pad:has(#down-button:active),
+.d-pad:has(#p2-down-button:active) {
     transform: rotateX(-2deg);
 }
 
-.d-pad:has(#left-button:active) {
+.d-pad:has(#left-button:active),
+.d-pad:has(#p2-left-button:active) {
     transform: rotateY(-2deg);
 }
 
-.d-pad:has(#right-button:active) {
+.d-pad:has(#right-button:active),
+.d-pad:has(#p2-right-button:active) {
     transform: rotateY(2deg);
 }
 
@@ -442,7 +436,8 @@ body {
     left: var(--d-pad-button-size);
 }
 
-#up-button {
+#up-button,
+#p2-up-button {
     width: var(--d-pad-button-size);
     height: calc(var(--d-pad-button-size) + 2px);
     top: 0;
@@ -450,7 +445,8 @@ body {
     border-radius: 5px 5px 0 0;
 }
 
-#down-button {
+#down-button,
+#p2-down-button {
     width: var(--d-pad-button-size);
     height: calc(var(--d-pad-button-size) + 2px);
     bottom: 0;
@@ -458,7 +454,8 @@ body {
     border-radius: 0 0 5px 5px;
 }
 
-#left-button {
+#left-button,
+#p2-left-button {
     width: calc(var(--d-pad-button-size) + 2px);
     height: var(--d-pad-button-size);
     top: var(--d-pad-button-size);
@@ -466,7 +463,8 @@ body {
     border-radius: 5px 0 0 5px;
 }
 
-#right-button {
+#right-button,
+#p2-right-button {
     width: calc(var(--d-pad-button-size) + 2px);
     height: var(--d-pad-button-size);
     top: var(--d-pad-button-size);
@@ -619,5 +617,9 @@ button:focus-visible {
 
     #root.link-mode .shell {
         margin: 0;
+    }
+
+    #root.link-mode #p2-controls {
+        display: none;
     }
 }

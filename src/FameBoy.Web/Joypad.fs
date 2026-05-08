@@ -27,6 +27,17 @@ module private Helpers =
               "start-button", Start
               "select-button", Select ]
 
+    let p2ButtonById =
+        Map.ofList
+            [ "p2-up-button", Up
+              "p2-down-button", Down
+              "p2-left-button", Left
+              "p2-right-button", Right
+              "p2-a-button", A
+              "p2-b-button", B
+              "p2-start-button", Start
+              "p2-select-button", Select ]
+
     let buttonByKeyCode =
         Map.ofList
             [ "KeyW", Up
@@ -50,6 +61,20 @@ module private Helpers =
               "PageDown", Select ]
 
 open Helpers
+
+let private bindPointerButtons
+    (buttonMap: Map<string, JoypadButton>)
+    (setPressed: (Set<JoypadButton> -> Set<JoypadButton>) -> unit) =
+    buttonMap
+    |> Map.iter (fun id button ->
+        let el = document.getElementById id
+
+        el.addEventListener (
+            "pointerdown",
+            fun e ->
+                e.preventDefault ()
+                setPressed (fun pressed -> pressed.Add button)
+        ))
 
 let initJoypad () =
     let mutable pressed: Set<JoypadButton> = Set.empty
@@ -79,16 +104,7 @@ let initJoypad () =
             | None -> ()
     )
 
-    buttonById
-    |> Map.iter (fun id button ->
-        let el = document.getElementById id
-
-        el.addEventListener (
-            "pointerdown",
-            fun e ->
-                e.preventDefault ()
-                pressed <- pressed.Add button
-        ))
+    bindPointerButtons buttonById (fun update -> pressed <- update pressed)
 
     fun () ->
         { Up = pressed.Contains Up
@@ -103,6 +119,8 @@ let initJoypad () =
 let initJoypadP2 () =
     let mutable pressed: Set<JoypadButton> = Set.empty
 
+    window.addEventListener ("pointerup", fun _ -> pressed <- Set.empty)
+    window.addEventListener ("pointercancel", fun _ -> pressed <- Set.empty)
     window.addEventListener ("blur", fun _ -> pressed <- Set.empty)
 
     window.addEventListener (
@@ -127,6 +145,8 @@ let initJoypadP2 () =
             | Some b -> pressed <- pressed.Remove b
             | None -> ()
     )
+
+    bindPointerButtons p2ButtonById (fun update -> pressed <- update pressed)
 
     fun () ->
         { Up = pressed.Contains Up
