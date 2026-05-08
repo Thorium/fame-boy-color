@@ -319,10 +319,26 @@ let private onFirstInteraction (_: Event) =
         | Some bytes -> startEmulator bytes
         | None -> ()
 
+let private assetUrl fileName =
+    let pathname = window.location.pathname
+    let basePath =
+        if pathname.EndsWith "/" then
+            pathname
+        else
+            let lastSlash = pathname.LastIndexOf "/"
+            let lastSegment = pathname.Substring(lastSlash + 1)
+
+            if lastSegment.Contains "." then
+                pathname.Substring(0, lastSlash + 1)
+            else
+                pathname + "/"
+
+    basePath + fileName
+
 let loadDefaultRom () =
     async {
         try
-            let! response = fetch "tobudx.gb" |> Async.AwaitPromise
+            let! response = fetch (assetUrl "tobudx.gb") |> Async.AwaitPromise
             let! arrayBuffer = response.arrayBuffer () |> Async.AwaitPromise
             let uint8Array = JS.Constructors.Uint8Array.Create(arrayBuffer)
             let bytes: byte array = Array.init (int uint8Array.length) (fun i -> uint8Array[i])

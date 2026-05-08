@@ -35,6 +35,8 @@ jobs:
 
       - name: Build web app
         working-directory: src/FameBoy.Web
+        env:
+          PAGES_BASE_PATH: /${{ github.event.repository.name }}/
         run: dotnet fable --run npx vite build
 
       - name: Build blog
