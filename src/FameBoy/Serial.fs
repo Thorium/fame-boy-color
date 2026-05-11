@@ -5,60 +5,40 @@ open FameBoy.Hardware
 open FameBoy.IoController
 
 let private getCyclesPerByte (io: IoController) (sc: uint8) =
-    // stepSerial runs in normal-speed M-cycles.
-    // DMG / CGB normal speed, slow clock: 128 M-cycles per bit = 1024 per byte.
-    // CGB normal speed, fast clock: 4 M-cycles per bit = 32 per byte.
-    // CGB double speed halves those normal-speed M-cycle counts.
+    // stepSerial is already clocked in normal-speed M-cycles by Emulator.stepper,
+    // including while the CPU is in CGB double-speed mode, so serial timing here
+    // should not apply an extra double-speed adjustment.
     let fastClock = io.CgbMode && (sc &&& 0x02uy <> 0uy)
 
-    match fastClock, io.DoubleSpeed with
-    | false, false -> 128 * 8
-    | false, true -> 64 * 8
-    | true, false -> 4 * 8
-    | true, true -> 2 * 8
+    if fastClock then 4 * 8 else 128 * 8
 
 /// Minimal one-shot diagnostics for the in-process link cable. Announces
-/// when the master/slave roles are locked. Per-byte and per-override
-/// tracing has been removed; reintroduce ad-hoc when debugging.
+/// when the link cable is connected. Per-byte and per-override tracing has
+/// been removed; reintroduce ad-hoc when debugging.
 module private LinkLog =
     let mutable private announced = false
 
-    let announce (masterLabel: string) (slaveLabel: string) =
+    let announce () =
         if not announced then
             announced <- true
-            printfn $"[LINK] Connected. Master=%s{masterLabel}, Slave=%s{slaveLabel}."
+            printfn "[LINK] Connected."
 
-/// Shared link-cable arbitration state, owned by the frontend and shared
-/// between the two paired SerialStates. Tracks which device has claimed
-/// the master role. None until the first device asserts SC=0x81 (transfer
-/// requested with internal clock), after which the role is locked for the
-/// remainder of the session.
-///
-/// There is intentionally no fallback timer. On real hardware, two paired
-/// Game Boys at their title screens both sit at SC=0x80 (slave-listening)
-/// indefinitely — neither escalates to SC=0x81 until a user navigates to
-/// a multiplayer menu option (e.g. selecting "2-PLAYER" in Tetris). We
-/// mirror that: if neither side ever asserts SC=0x81, no role is locked
-/// and no exchange occurs.
+/// Shared link-cable arbitration state for the currently active transfer.
+/// Unlike the previous implementation, ownership is not locked for the whole
+/// session: the master can change on later transfers.
 type LinkArbiter() =
-    let mutable masterIsP1: bool option = None
+    let mutable activeMasterIsP1: bool option = None
 
-    /// Returns Some true if the given device is the locked master,
-    /// Some false if locked slave, None if not yet locked.
     member _.RoleFor(isP1: bool) : bool option =
-        match masterIsP1 with
+        match activeMasterIsP1 with
         | None -> None
         | Some m -> Some (m = isP1)
 
-    member _.IsLocked = masterIsP1.IsSome
+    member _.Clear() = activeMasterIsP1 <- None
 
-    /// Lock the role: the given device becomes master.
-    member _.LockMaster(isP1: bool) =
-        if masterIsP1.IsNone then
-            masterIsP1 <- Some isP1
-            let masterLabel = if isP1 then "P1" else "P2"
-            let slaveLabel = if isP1 then "P2" else "P1"
-            LinkLog.announce masterLabel slaveLabel
+    member _.ChooseMaster(preferP1: bool) =
+        if activeMasterIsP1.IsNone then
+            activeMasterIsP1 <- Some preferP1
 
 type SerialState =
     { mutable Counter: int
@@ -91,35 +71,44 @@ let createSerial () =
       LinkPeer = None
       LinkPeerIo = None }
 
-/// Resolve the device's wired role and force its ROM-visible SC bit 0 to
-/// match. Pre-lock, observe whether this device is voluntarily asserting
-/// SC=0x81 and lock the arbiter to it. Returns the (possibly-modified) SC
-/// value for the rest of stepSerial to use.
+/// Resolve the device's role for the currently pending transfer. If exactly
+/// one side requests internal clock, it becomes the active master. If both
+/// request internal clock simultaneously, break the tie deterministically in
+/// favor of P1 for that one transfer.
 let private applyArbitration (state: SerialState) (io: IoController) : uint8 =
     let scInit = io.Registers[Io.Sc]
 
     match state.LinkArbiter with
     | None -> scInit
     | Some arbiter ->
-        // Pre-lock: if this device is asserting itself as master
-        // (SC=0x81), claim the role.
-        if not arbiter.IsLocked && scInit &&& 0x81uy = 0x81uy then
-            arbiter.LockMaster(state.IsLinkP1)
+        match state.LinkPeerIo with
+        | Some peerIo when scInit &&& 0x80uy <> 0uy ->
+            let selfRequestsMaster = scInit &&& 0x81uy = 0x81uy
+            let peerSc = peerIo.Registers[Io.Sc]
+            let peerRequestsMaster = peerSc &&& 0x81uy = 0x81uy
 
-        // Override SC bit 0 to match the locked role, but only while a
-        // transfer is pending (bit 7 set) so we don't disturb idle SC
-        // bookkeeping the ROM may rely on between transfers.
-        match arbiter.RoleFor(state.IsLinkP1) with
-        | Some isMasterRole when scInit &&& 0x80uy <> 0uy ->
-            let newSc =
-                if isMasterRole then scInit ||| 0x01uy
-                else scInit &&& 0b1111_1110uy
-            if newSc <> scInit then
-                io.Registers[Io.Sc] <- newSc
-                newSc
-            else
-                scInit
-        | _ -> scInit
+            if selfRequestsMaster && not peerRequestsMaster then
+                arbiter.ChooseMaster(state.IsLinkP1)
+            elif peerRequestsMaster && not selfRequestsMaster then
+                arbiter.ChooseMaster(not state.IsLinkP1)
+            elif selfRequestsMaster && peerRequestsMaster then
+                arbiter.ChooseMaster(true)
+
+            match arbiter.RoleFor(state.IsLinkP1) with
+            | Some isMasterRole ->
+                let newSc =
+                    if isMasterRole then scInit ||| 0x01uy
+                    else scInit &&& 0b1111_1110uy
+
+                if newSc <> scInit then
+                    io.Registers[Io.Sc] <- newSc
+                    newSc
+                else
+                    scInit
+            | None -> scInit
+        | _ ->
+            arbiter.Clear()
+            scInit
 
 /// Master's clock has completed. Deliver the byte to the master, and
 /// simultaneously to the slave if it is listening (SC bit 7 set). This
@@ -130,9 +119,9 @@ let private applyArbitration (state: SerialState) (io: IoController) : uint8 =
 /// purely from perceived link speed.
 let private completeMasterTransfer (state: SerialState) (io: IoController) (sc: uint8) =
     let peerByte =
-        match state.LinkPeer with
-        | Some peer -> peer.OutgoingByte
-        | None -> 0xFFuy // unlinked: open-bus reads as 0xFF
+        match state.LinkPeer, state.LinkPeerIo with
+        | Some peer, Some peerIo when peerIo.Registers[Io.Sc] &&& 0x80uy <> 0uy -> peer.OutgoingByte
+        | _ -> 0xFFuy // unlinked or unarmed peer: input is pulled high
 
     // Master delivery.
     io.Registers[Io.Sb] <- peerByte
@@ -169,6 +158,10 @@ let stepSerial (state: SerialState) (io: IoController) =
                 state.Counter <- 0
                 state.IsTransferring <- false
                 completeMasterTransfer state io sc
+
+                match state.LinkArbiter with
+                | Some arbiter -> arbiter.Clear ()
+                | None -> ()
         else
             // Slave: track the live SB so master sees the freshest
             // outgoing byte. Receipt and IRQ are driven by the master's
@@ -193,6 +186,7 @@ let pairLink
     (serial1: SerialState) (io1: IoController)
     (serial2: SerialState) (io2: IoController) =
     let arbiter = LinkArbiter()
+    LinkLog.announce ()
     serial1.LinkArbiter <- Some arbiter
     serial1.IsLinkP1 <- true
     serial1.LinkPeer <- Some serial2

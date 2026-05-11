@@ -22,7 +22,11 @@ let createEmulatorWithMemory bytes ringBufferSize getJoypadState =
 
     io.ApuRegisters <- apu.Registers
 
-    let applyJoypadState (state: JoypadState) = io.JoypadState <- state
+    let updateJoypadState (state: JoypadState) =
+        io.Registers[Hardware.Io.Joyp] <-
+            FameBoy.Joypad.applyJoypadState state io.Registers[Hardware.Io.Joyp] io.TriggerInterrupt
+
+        io.JoypadState <- state
 
     let mutable lastPpuMode = io.PpuMode
     let mutable normalSpeedDivider = 0
@@ -71,7 +75,7 @@ let createEmulatorWithMemory bytes ringBufferSize getJoypadState =
 
         mCycles
 
-    ppu, apu, serial, io, stepper, applyJoypadState, cpu, memory
+    ppu, apu, serial, io, stepper, updateJoypadState, cpu, memory
 
 let createEmulator bytes ringBufferSize getJoypadState =
     let ppu, apu, serial, io, stepper, applyJoypadState, cpu, _ =

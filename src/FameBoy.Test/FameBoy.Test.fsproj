@@ -27,7 +27,12 @@
         <Compile Include="InstructionTests\LoadTests.fs" />
         <Compile Include="InstructionTests\LogicTests.fs" />
         <Compile Include="InstructionTests\OtherTests.fs" />
+        <Compile Include="IoControllerTests.fs" />
         <Compile Include="JoypadTests.fs" />
+        <Compile Include="MemoryTests.fs" />
+        <Compile Include="SerialTests.fs" />
+        <Compile Include="StopTests.fs" />
+        <Compile Include="StopWakeTests.fs" />
         <Compile Include="TimerTests.fs" />
         <Compile Include="CartridgeTests\Mbc1CartTests.fs" />
         <Compile Include="CartridgeTests\Mbc3CartTests.fs" />

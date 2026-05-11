@@ -12,6 +12,7 @@
         <Compile Include="Cartridges\Mbc5Cart.fs" />
         <Compile Include="Cartridges\Cartridge.fs" />
         <Compile Include="Interrupts.fs" />
+        <Compile Include="Debug.fs" />
         <Compile Include="Joypad.fs" />
         <Compile Include="IoController.fs" />
         <Compile Include="Memory.fs" />

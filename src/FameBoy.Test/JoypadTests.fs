@@ -1,6 +1,9 @@
 module FameBoy.Test.JoypadTests
 
 open NUnit.Framework
+open FameBoy.Interrupts
+open FameBoy.IoController
+open FameBoy.Hardware
 open FameBoy.Joypad
 
 [<Test>]
@@ -95,3 +98,23 @@ let ``toJoypadRegisterValue returns all high when both selectors are low`` () =
     let result = toJoypadRegisterValue state current
 
     Assert.That(result, Is.EqualTo 0b11001111uy)
+
+[<Test>]
+let ``applyJoypadState triggers joypad interrupt on selected button press`` () =
+    let io = createIoController ()
+    io.Registers[Io.Joyp] <- 0b0001_1111uy
+
+    let state =
+        { Up = false
+          Down = false
+          Left = false
+          Right = false
+          A = true
+          B = false
+          Start = false
+          Select = false }
+
+    let nextReg = applyJoypadState state io.Registers[Io.Joyp] io.TriggerInterrupt
+
+    Assert.That(nextReg, Is.EqualTo 0b0001_1110uy)
+    Assert.That(io.Registers[Io.If] &&& getInterruptMask InterruptType.Joypad, Is.Not.EqualTo 0uy)

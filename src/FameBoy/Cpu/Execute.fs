@@ -29,6 +29,7 @@ let checkForInterrupt (cpu: Cpu) (io: IoController) =
 let serviceInterrupt (cpu: Cpu) (io: IoController) (interrupt: InterruptType) : int =
     cpu.Ime <- false
     cpu.Halted <- false
+    cpu.Stopped <- false
     io.ClearInterruptFlag interrupt
     pushToStack cpu cpu.Pc
     cpu.Pc <- getVector interrupt
@@ -53,7 +54,7 @@ let execute (cpu: Cpu) (io: IoController) (instr: DecodedInstruction) =
                 io.DoubleSpeed <- not io.DoubleSpeed
                 io.Registers[Io.Key1] <- io.Registers[Io.Key1] &&& 0xFEuy // Clear prepare bit
             else
-                cpu.Halted <- true // Halt until button press (like HALT but deeper)
+                cpu.Stopped <- true
             false
         | Di ->
             cpu.Ime <- false
@@ -94,7 +95,21 @@ let execute (cpu: Cpu) (io: IoController) (instr: DecodedInstruction) =
     interruptCycles + instructionCycles
 
 let stepCpu (cpu: Cpu) (io: IoController) =
-    if cpu.Halted then
+    if cpu.Stopped then
+        let joypadWake = io.CpuRead (Io.IoMemoryOffset + Io.Joyp) &&& 0x0Fuy <> 0x0Fuy
+
+        if joypadWake then
+            cpu.Stopped <- false
+            1
+        elif ((io.InterruptEnable &&& io.Registers[Io.If]) &&& 0x1Fuy) <> 0uy then
+            cpu.Stopped <- false
+
+            match checkForInterrupt cpu io with
+            | ValueSome i -> serviceInterrupt cpu io i
+            | ValueNone -> 1
+        else
+            1
+    elif cpu.Halted then
         if ((io.InterruptEnable &&& io.Registers[Io.If]) &&& 0x1Fuy) <> 0uy then
             cpu.Halted <- false
 

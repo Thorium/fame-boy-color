@@ -146,17 +146,12 @@ let createCgbCpu (memory: Memory) (io: IoController) =
     io.InterruptEnable <- 0x00uy
     io.PpuMode <- LanguagePrimitives.EnumOfValue(io.Registers[Io.Stat] &&& 0b0011uy)
 
-    // Initialize CGB palette RAM
-    // For CGB-only games (0xC0), set all BG palettes to white - the game will set them up
-    // For dual-mode games (0x80), apply compatibility palettes based on title checksum
+    // Initialize CGB palette RAM. CGB-capable carts (0x80 and 0xC0) run in full
+    // CGB mode here, so leave palette setup to the game and only seed color 0 white.
     let rom = memory.Cartridge.Rom
 
-    if rom[0x143] = 0x80uy then
-        applyCompatibilityPalettes rom io.BgPaletteRam io.ObjPaletteRam
-    else
-        // CGB-only: set palette 0 color 0 to white (game will initialize properly)
-        for i in 0..7 do
-            io.BgPaletteRam[i * 8] <- 0xFFuy
-            io.BgPaletteRam[i * 8 + 1] <- 0x7Fuy
+    for i in 0..7 do
+        io.BgPaletteRam[i * 8] <- 0xFFuy
+        io.BgPaletteRam[i * 8 + 1] <- 0x7Fuy
 
     cpu

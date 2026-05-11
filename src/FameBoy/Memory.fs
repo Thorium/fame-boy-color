@@ -1,6 +1,7 @@
 ﻿module FameBoy.Memory
 
 open FameBoy.Cartridge
+open FameBoy.Debug
 open FameBoy.IoController
 
 /// NOTE Access via indexer syntax: memory[addr]
@@ -107,6 +108,9 @@ let doHdmaTransfer (memory: Memory) =
     let io = memory.IoController
 
     if io.HdmaActive && not io.HdmaHblank then
+        let startSrc = io.HdmaSource
+        let startDst = io.HdmaDest
+        let startLen = io.HdmaLength
         let mutable src = int io.HdmaSource
         let mutable dst = int io.HdmaDest
 
@@ -123,11 +127,17 @@ let doHdmaTransfer (memory: Memory) =
         io.HdmaActive <- false
         io.HdmaLength <- 0
 
+        CgbTrace.logRare "cgb-hdma-gdma" 250L (fun () ->
+            $"[CGB] GDMA done src=%04X{int startSrc} dst=%04X{0x8000 + int (startDst &&& 0x1FFFus)} bytes=%03X{startLen} vbk=%d{io.VramBank} LY=%d{int io.Registers[Hardware.Io.Ly]} MODE=%d{int io.PpuMode}")
+
 // GBC HDMA HBlank transfer (copies 16 bytes per HBlank)
 let doHdmaHblankBlock (memory: Memory) =
     let io = memory.IoController
 
     if io.HdmaActive && io.HdmaHblank && io.HdmaLength > 0 then
+        let startSrc = io.HdmaSource
+        let startDst = io.HdmaDest
+        let remainingBefore = io.HdmaLength
         let mutable src = int io.HdmaSource
         let mutable dst = int io.HdmaDest
 
@@ -143,6 +153,9 @@ let doHdmaHblankBlock (memory: Memory) =
         io.HdmaDest <- uint16 (dst &&& 0x1FFF)
         io.HdmaLength <- io.HdmaLength - 0x10
 
+        CgbTrace.logRare "cgb-hdma-hblank" 250L (fun () ->
+            $"[CGB] HDMA block src=%04X{int startSrc} dst=%04X{0x8000 + int (startDst &&& 0x1FFFus)} remain=%03X{remainingBefore}->%03X{io.HdmaLength} vbk=%d{io.VramBank} LY=%d{int io.Registers[Hardware.Io.Ly]} MODE=%d{int io.PpuMode}")
+
         if io.HdmaLength <= 0 then
             io.HdmaActive <- false
 
@@ -153,7 +166,7 @@ let createMemory (rom: uint8 array) ioController : Memory =
     let cartridge = createCartridge rom
     let cgbMode = isCgbRom rom
     ioController.CgbMode <- cgbMode
-    ioController.CgbCompatMode <- cgbMode && rom.Length > 0x143 && rom[0x143] = 0x80uy
+    ioController.CgbCompatMode <- false
 
     // GBC: 2 VRAM banks (16KB), 8 WRAM banks (32KB)
     // DMG: 1 VRAM bank (8KB), 2 WRAM banks (8KB) - but allocate full size for simplicity

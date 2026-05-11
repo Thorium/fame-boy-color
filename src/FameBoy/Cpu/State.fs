@@ -108,6 +108,7 @@ type Cpu =
       mutable Sp: uint16
       mutable Ime: bool
       mutable Halted: bool
+      mutable Stopped: bool
       mutable EnableImeNextInstr: bool }
 
     member this.Flags
@@ -123,4 +124,5 @@ let createCpu (memory: Memory) : Cpu =
       Sp = 0us
       Ime = true
       Halted = false
+      Stopped = false
       EnableImeNextInstr = false }

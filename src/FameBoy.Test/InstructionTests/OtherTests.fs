@@ -8,6 +8,7 @@ open FameBoy.Cpu.State
 open FameBoy.Cpu.State.Flags
 open FameBoy.Cpu.Opcodes
 open FameBoy.Cpu.Execute
+open FameBoy.Hardware
 
 [<Test>]
 let ``halt enables halt`` () =
@@ -146,3 +147,37 @@ let ``Loading value into F register zeroes lowest 4 bits`` () =
 
     // Evaluate
     Assert.That(cpu.Registers.F, Is.EqualTo 0b10100000uy)
+
+[<Test>]
+let ``stop enables stopped state when not switching CGB speed`` () =
+    let cpu, io = createTestCpu [||]
+    cpu.Pc <- 0x100us
+    cpu.Memory.Cartridge.Rom[0x100] <- 0x10uy
+    cpu.Memory.Cartridge.Rom[0x101] <- 0x00uy
+    cpu.Stopped <- false
+    cpu.Halted <- false
+
+    let instr = fetchAndDecode cpu.Memory cpu.Pc
+    execute cpu io instr |> ignore
+
+    Assert.That(instr.Length, Is.EqualTo 2)
+    Assert.That(instr.MCycles, Is.EqualTo(Fixed 2))
+    Assert.That(cpu.Stopped, Is.True)
+    Assert.That(cpu.Halted, Is.False)
+
+[<Test>]
+let ``stop switches CGB speed without entering stopped state when KEY1 prepare is set`` () =
+    let cpu, io = createTestCpu [||]
+    cpu.Pc <- 0x100us
+    cpu.Memory.Cartridge.Rom[0x100] <- 0x10uy
+    cpu.Memory.Cartridge.Rom[0x101] <- 0x00uy
+    io.CgbMode <- true
+    io.Registers[Io.Key1] <- 0x01uy
+    io.DoubleSpeed <- false
+
+    let instr = fetchAndDecode cpu.Memory cpu.Pc
+    execute cpu io instr |> ignore
+
+    Assert.That(cpu.Stopped, Is.False)
+    Assert.That(io.DoubleSpeed, Is.True)
+    Assert.That(io.Registers[Io.Key1], Is.EqualTo 0x00uy)

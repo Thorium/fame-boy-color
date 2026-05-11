@@ -1,5 +1,6 @@
 ﻿module FameBoy.IoController
 
+open FameBoy.Debug
 open FameBoy.Interrupts
 open FameBoy.Hardware
 open FameBoy.Joypad
@@ -70,6 +71,9 @@ type IoController =
         | Io.Vbk when this.CgbMode ->
             this.VramBank <- int (value &&& 0x01uy)
             this.Registers[offset] <- value ||| 0xFEuy
+
+            CgbTrace.logRare "cgb-vbk" 500L (fun () ->
+                $"[CGB] VBK=%d{this.VramBank} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
         | Io.Svbk when this.CgbMode ->
             let bank = int (value &&& 0x07uy)
             this.WramBank <- if bank = 0 then 1 else bank
@@ -78,20 +82,42 @@ type IoController =
             this.BgPaletteIndex <- value &&& 0x3Fuy
             this.BgPaletteAutoIncrement <- value &&& 0x80uy <> 0uy
             this.Registers[offset] <- value
+
+            CgbTrace.logRare "cgb-bcps" 500L (fun () ->
+                $"[CGB] BCPS idx=%02X{int this.BgPaletteIndex} auto=%b{this.BgPaletteAutoIncrement} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
         | Io.Bcpd when this.CgbMode ->
-            this.BgPaletteRam[int this.BgPaletteIndex] <- value
-            this.BgPaletteDirty <- true
+            if this.PpuMode <> PpuMode.Drawing then
+                this.BgPaletteRam[int this.BgPaletteIndex] <- value
+                this.BgPaletteDirty <- true
+
             if this.BgPaletteAutoIncrement then
                 this.BgPaletteIndex <- (this.BgPaletteIndex + 1uy) &&& 0x3Fuy
+
+            this.Registers[Io.Bcps] <-
+                (if this.BgPaletteAutoIncrement then 0x80uy else 0x00uy) ||| this.BgPaletteIndex
+
+            CgbTrace.logRare "cgb-bcpd" 500L (fun () ->
+                $"[CGB] BCPD write value=%02X{int value} nextIdx=%02X{int this.BgPaletteIndex} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
         | Io.Ocps when this.CgbMode ->
             this.ObjPaletteIndex <- value &&& 0x3Fuy
             this.ObjPaletteAutoIncrement <- value &&& 0x80uy <> 0uy
             this.Registers[offset] <- value
+
+            CgbTrace.logRare "cgb-ocps" 500L (fun () ->
+                $"[CGB] OCPS idx=%02X{int this.ObjPaletteIndex} auto=%b{this.ObjPaletteAutoIncrement} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
         | Io.Ocpd when this.CgbMode ->
-            this.ObjPaletteRam[int this.ObjPaletteIndex] <- value
-            this.ObjPaletteDirty <- true
+            if this.PpuMode <> PpuMode.Drawing then
+                this.ObjPaletteRam[int this.ObjPaletteIndex] <- value
+                this.ObjPaletteDirty <- true
+
             if this.ObjPaletteAutoIncrement then
                 this.ObjPaletteIndex <- (this.ObjPaletteIndex + 1uy) &&& 0x3Fuy
+
+            this.Registers[Io.Ocps] <-
+                (if this.ObjPaletteAutoIncrement then 0x80uy else 0x00uy) ||| this.ObjPaletteIndex
+
+            CgbTrace.logRare "cgb-ocpd" 500L (fun () ->
+                $"[CGB] OCPD write value=%02X{int value} nextIdx=%02X{int this.ObjPaletteIndex} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
         | Io.Hdma1 when this.CgbMode ->
             this.HdmaSource <- (this.HdmaSource &&& 0x00FFus) ||| (uint16 value <<< 8)
         | Io.Hdma2 when this.CgbMode ->
@@ -103,6 +129,9 @@ type IoController =
         | Io.Hdma5 when this.CgbMode ->
             let length = (int (value &&& 0x7Fuy) + 1) * 0x10
             let hblankMode = value &&& 0x80uy <> 0uy
+
+            CgbTrace.logRare "cgb-hdma-start" 250L (fun () ->
+                $"[CGB] HDMA5 write value=%02X{int value} src=%04X{int this.HdmaSource} dst=%04X{0x8000 + int (this.HdmaDest &&& 0x1FFFus)} len=%03X{length} hblank=%b{hblankMode} vbk=%d{this.VramBank} LY=%d{int this.Registers[Io.Ly]} MODE=%d{int this.PpuMode}")
 
             if this.HdmaActive && not hblankMode then
                 // Writing 0 to bit 7 while HBlank HDMA active cancels it
@@ -132,9 +161,9 @@ type IoController =
         if offset >= Io.Nr10 && offset <= 0x3F then
             this.ApuRegisters[offset]
         elif offset = Io.Bcpd && this.CgbMode then
-            this.BgPaletteRam[int this.BgPaletteIndex]
+            if this.PpuMode = PpuMode.Drawing then 0xFFuy else this.BgPaletteRam[int this.BgPaletteIndex]
         elif offset = Io.Ocpd && this.CgbMode then
-            this.ObjPaletteRam[int this.ObjPaletteIndex]
+            if this.PpuMode = PpuMode.Drawing then 0xFFuy else this.ObjPaletteRam[int this.ObjPaletteIndex]
         elif offset = Io.Vbk && this.CgbMode then
             0xFEuy ||| uint8 this.VramBank
         elif offset = Io.Hdma5 && this.CgbMode then

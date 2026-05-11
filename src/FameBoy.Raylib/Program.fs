@@ -1,6 +1,7 @@
 ﻿open System
 open System.IO
 open FameBoy.Apu
+open FameBoy.Debug
 open FameBoy.Emulator
 open FameBoy.Hardware
 open FameBoy.Joypad
@@ -24,6 +25,9 @@ let nonFlagArgs =
         if a = "--link" then
             Config.linkMode <- true
             false
+        elif a = "--cgb-trace" then
+            CgbTrace.Enabled <- true
+            false
         else
             true)
 
@@ -32,6 +36,7 @@ if nonFlagArgs.Length < 1 || nonFlagArgs.Length > 2 then
     eprintfn ""
     eprintfn "Options:"
     eprintfn "  --link    Run two linked instances side-by-side (local multiplayer)"
+    eprintfn "  --cgb-trace  Print sparse CGB palette/HDMA diagnostics"
     eprintfn "  scale     Window scale factor (positive integer, default 4)"
     eprintfn ""
     eprintfn "Controls:"
