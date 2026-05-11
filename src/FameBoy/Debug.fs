@@ -7,11 +7,11 @@ module CgbTrace =
 
     let private lastSeen = Collections.Generic.Dictionary<string, int64>()
 
-    let private tick64 = Environment.TickCount64
+    let private tick64 () = DateTime.UtcNow.Ticks / TimeSpan.TicksPerMillisecond
 
     let logRare (key: string) (minIntervalMs: int64) (message: unit -> string) =
         if Enabled then
-            let now = tick64
+            let now = tick64 ()
             let mutable last = 0L
 
             if lastSeen.TryGetValue(key, &last) then
