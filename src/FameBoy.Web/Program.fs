@@ -108,22 +108,117 @@ let loadImageData (ppu: Ppu) (imgData: ImageData) =
             imgData.data[j + 3] <- 255uy
 
 let mutable currentAnimationFrame = None
+let mutable currentSaveState: (string * byte array) option = None
+
+let private romTitle (bytes: byte array) =
+    if bytes.Length <= 0x134 then
+        "rom"
+    else
+        let titleChars =
+            [| for i in 0x134 .. min 0x143 (bytes.Length - 1) do
+                   let b = bytes[i]
+
+                   if b >= 32uy && b <= 126uy then
+                       yield char b |]
+
+        let title = String(titleChars).Trim().Replace(" ", "_")
+
+        if String.IsNullOrWhiteSpace title then "rom" else title
+
+let private romHash (bytes: byte array) =
+    let mutable hash = 5381
+
+    for b in bytes do
+        hash <- ((hash <<< 5) + hash) ^^^ int b
+
+    hash &&& 0x7FFFFFFF
+
+let private saveKey (bytes: byte array) =
+    $"fameboy:sav:{romTitle bytes}:{bytes.Length}:{romHash bytes}"
+
+let private toHex (bytes: byte array) =
+    let chars = Array.zeroCreate<char> (bytes.Length * 2)
+
+    for i in 0 .. bytes.Length - 1 do
+        let value = int bytes[i]
+        let offset = i * 2
+
+        chars[offset] <- "0123456789abcdef"[value >>> 4]
+        chars[offset + 1] <- "0123456789abcdef"[value &&& 0x0F]
+
+    String chars
+
+let private hexValue c =
+    if c >= '0' && c <= '9' then
+        int c - int '0'
+    elif c >= 'a' && c <= 'f' then
+        int c - int 'a' + 10
+    elif c >= 'A' && c <= 'F' then
+        int c - int 'A' + 10
+    else
+        -1
+
+let private tryParseHex (value: string) =
+    if String.IsNullOrEmpty value || value.Length % 2 <> 0 then
+        None
+    else
+        let bytes = Array.zeroCreate<byte> (value.Length / 2)
+        let mutable isValid = true
+
+        for i in 0 .. bytes.Length - 1 do
+            let hi = hexValue value[i * 2]
+            let lo = hexValue value[i * 2 + 1]
+
+            if hi < 0 || lo < 0 then
+                isValid <- false
+            else
+                bytes[i] <- byte ((hi <<< 4) ||| lo)
+
+        if isValid then Some bytes else None
+
+let private loadSaveRam key (ram: byte array) =
+    if ram.Length > 0 then
+        try
+            match window.localStorage.getItem key with
+            | null -> ()
+            | value ->
+                match tryParseHex value with
+                | Some saveBytes -> Array.Copy(saveBytes, ram, min saveBytes.Length ram.Length)
+                | None -> ()
+        with _ ->
+            ()
+
+let private persistCurrentSave () =
+    match currentSaveState with
+    | Some (key, ram) when ram.Length > 0 ->
+        try
+            window.localStorage.setItem(key, toHex ram)
+        with _ ->
+            ()
+    | _ -> ()
 
 let private showOverlayError (message: string) =
     startOverlay?innerHTML <- message
     startOverlay?classList?remove "hidden"
 
 let startEmulator bytes =
+    persistCurrentSave ()
+    currentSaveState <- None
     currentAnimationFrame |> Option.iter window.cancelAnimationFrame
+    currentAnimationFrame <- None
 
     startOverlay?classList?add "hidden"
 
-    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1, _ =
+    let ppu1, apu1, serial1, io1, stepEmulator1, applyJoypadState1, _, memory1 =
         try
-            createEmulator bytes 4096 getJoypadState
+            createEmulatorWithMemory bytes 4096 getJoypadState
         with ex ->
             showOverlayError "Error!<br>Invalid ROM"
             raise ex
+
+    let saveKey = saveKey bytes
+    loadSaveRam saveKey memory1.Cartridge.Ram
+    currentSaveState <- Some (saveKey, memory1.Cartridge.Ram)
 
     // In link mode, create a second emulator instance
     let linkState =
@@ -163,6 +258,7 @@ let startEmulator bytes =
     let mutable fpsIndex = 0
     let mutable fpsFrameCount = 0
     let mutable lastFpsLogTime = 0.0
+    let mutable lastSavePersistTime = -2000.0
 
     let rec runEmulator (last: float) (timestamp: float) =
         let dt = timestamp - last
@@ -225,6 +321,10 @@ let startEmulator bytes =
             fpsCounter.textContent <- $"%.0f{fps}"
             lastFpsLogTime <- timestamp
 
+        if timestamp - lastSavePersistTime >= 2000.0 then
+            persistCurrentSave ()
+            lastSavePersistTime <- timestamp
+
         draw ()
         currentAnimationFrame <- window.requestAnimationFrame (runEmulator timestamp) |> Some
 
@@ -252,6 +352,9 @@ let onFileLoaded (ev: Event) =
         reader.readAsArrayBuffer file
 
 fileUploadButton.addEventListener ("change", onFileLoaded)
+window.addEventListener ("beforeunload", fun _ -> persistCurrentSave ())
+window.addEventListener ("pagehide", fun _ -> persistCurrentSave ())
+document.addEventListener ("visibilitychange", fun _ -> if document.visibilityState = "hidden" then persistCurrentSave ())
 
 let scaleSelector = document.querySelectorAll "input[name='scale']"
 

@@ -11,7 +11,7 @@ A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser 
 - Supports most of the popular Game Boy and Game Boy Color games with sound (incl. Tetris, Pokémon, Mario, Zelda, and more!).
 - **Game Boy Color support** with full-color rendering, VRAM/WRAM banking, HDMA transfers, and compatibility palettes for DMG games.
 - **Link cable multiplayer** — run two emulator instances side-by-side with serial data exchange for local multiplayer.
-- **Battery-backed `.sav` support** on desktop for cartridges with SRAM.
+- **Battery-backed `.sav` support** on desktop and in the Fable/web build for cartridges with SRAM.
 - Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/). A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy-color](https://thorium.github.io/fame-boy-color/).
 - Cross-platform too, it runs natively on Windows, macOS, and Linux (and others) with [Raylib](https://www.raylib.com/).
 - Zero-dependency [F# core](./src/FameBoy) with robust typing and built with functional programming in mind.
@@ -33,7 +33,7 @@ This branch is extension with more features over the original demo.
 There are still a few gaps with the real hardware that I may or may not get to (but would like to).
 
 - Limited emulator configuration (no fast-forward, key remapping, or custom palettes).
-- Missing web save persistence and save states.
+- Missing save states.
 - Hardware inaccuracies (e.g. CPU instruction-level rather than M-cycle-level timing, scanline-based rendering rather than pixel FIFOs, and missing a few hardware features/bugs).
 
 ### Repo structure
@@ -80,6 +80,8 @@ npm run dev
 ```
 
 This starts both Fable and Vite in watch mode. Use **Ctrl+C** to stop (not `q`).
+
+In the Fable/web build, SRAM-backed cartridge saves are persisted locally as browser `.sav` data via `localStorage`.
 
 ### Testing
 
