@@ -9,6 +9,10 @@
     <link href="./favicon-32x32.png" rel="icon" sizes="32x32" type="image/png">
     <link href="./favicon-16x16.png" rel="icon" sizes="16x16" type="image/png">
     <link href="./site.webmanifest" rel="manifest">
+    <meta content="#4e4a57" name="theme-color"/>
+    <meta content="yes" name="mobile-web-app-capable"/>
+    <meta content="yes" name="apple-mobile-web-app-capable"/>
+    <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 </head>
 <body>
 <div id="root">
@@ -172,7 +176,7 @@
                 </tbody>
             </table>
         </div>
-        <a aria-label="GitHub repository" class="github-link" href="https://github.com/nickkossolapov/fame-boy" rel="noopener noreferrer"
+        <a aria-label="GitHub repository" class="github-link" href="https://github.com/Thorium/fame-boy-color" rel="noopener noreferrer"
            target="_blank">
             <svg fill="currentColor" height="35" viewBox="0 0 16 16" width="35">
                 <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.31 2.69.94 0 .67.01 1.3.01 1.49 0 .21-.15.45-.55.38A7.995 7.995 0 0 1 0 8c0-4.42 3.58-8 8-8Z"/>
@@ -188,6 +192,75 @@
     </div>
 
 </div>
+<!-- "Install as app" banner: only shown on mobile browsers when the page is
+     not already running as an installed PWA (see the script below). -->
+<div id="install" hidden role="region" aria-label="Install Fame Boy as an app">
+    <span id="install-text"></span>
+    <button id="install-btn" type="button">Install app</button>
+    <button id="install-close" type="button" aria-label="Dismiss">&#x2715;</button>
+</div>
 <script src="./Program.fs.js" type="module"></script>
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => { /* PWA is best-effort */ });
+        });
+    }
+</script>
+<script>
+    // Offer "install this page as an app" to mobile visitors who are still in
+    // the browser. Chromium browsers (Android Chrome/Edge/Samsung) fire
+    // `beforeinstallprompt`, which we defer behind our own button; Safari on
+    // iOS/iPadOS has no install API, so it gets Share > Add to Home Screen
+    // instructions instead. Dismissing the banner hides it for two weeks.
+    (() => {
+        const banner = document.getElementById('install');
+        const text = document.getElementById('install-text');
+        const installBtn = document.getElementById('install-btn');
+        const closeBtn = document.getElementById('install-close');
+        const DISMISS_KEY = 'fame-boy-install-dismissed';
+        const DISMISS_MS = 14 * 24 * 60 * 60 * 1000;
+
+        const ua = navigator.userAgent;
+        // iPadOS Safari reports itself as a Mac, but a Mac with a touch screen.
+        const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        const isMobile = isIOS || /Android|Mobile/i.test(ua);
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+        let dismissed = false;
+        try { dismissed = Number(localStorage.getItem(DISMISS_KEY)) > Date.now() - DISMISS_MS; } catch { /* storage may be blocked */ }
+        if (!isMobile || isStandalone || dismissed) return;
+
+        // The page flows under the fixed banner, so push it down by the banner's height.
+        const show = () => { banner.hidden = false; document.body.style.marginTop = banner.offsetHeight + 'px'; };
+        const hide = () => { banner.hidden = true; document.body.style.marginTop = ''; };
+        closeBtn.addEventListener('click', () => {
+            hide();
+            try { localStorage.setItem(DISMISS_KEY, String(Date.now())); } catch { /* best-effort */ }
+        });
+
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            text.textContent = 'Play Fame Boy as an app';
+            installBtn.hidden = false;
+            show();
+        });
+        installBtn.addEventListener('click', async () => {
+            if (!deferredPrompt) return;
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            if (outcome === 'accepted') hide();
+        });
+        window.addEventListener('appinstalled', hide);
+
+        if (isIOS) {
+            installBtn.hidden = true;
+            text.innerHTML = 'Install as an app: tap <b>Share</b> <svg class="share-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l4 4h-3v8h-2V7H8l4-4zm-7 9h2v8h10v-8h2v10H5V12z"/></svg> then <b>Add to Home Screen</b>';
+            show();
+        }
+    })();
+</script>
 </body>
 </html>

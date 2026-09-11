@@ -1,77 +1,67 @@
-# Fame Boy - Fame Boy Color
+# Fame Boy Color
 
-[![CI](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml/badge.svg)](https://github.com/nickkossolapov/fame-boy/actions/workflows/ci.yml)
+[![CI](https://github.com/Thorium/fame-boy-color/actions/workflows/ci.yml/badge.svg)](https://github.com/Thorium/fame-boy-color/actions/workflows/ci.yml)
 
-A Game Boy and Game Boy Color emulator written in F#. Try it out in the browser [here](https://nickkossolapov.github.io/fame-boy/)! A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy-color](https://thorium.github.io/fame-boy-color/).
+A Game Boy and Game Boy Color emulator written in F#. It runs in the browser (compiled with [Fable](https://fable.io/)) and natively on the desktop (with [Raylib](https://www.raylib.com/)).
+
+**▶ [Play online](https://thorium.github.io/fame-boy-color/)** (browser version, no install needed — comes with a bundled demo game, or upload your own `.gb` / `.gbc` ROM)
+
+**📱 Install as an app:** open the same link on your phone or tablet and tap **Install app** in the banner (Android / Chrome), or **Share → Add to Home Screen** (iPhone / iPad). The emulator then launches full-screen from your home screen and works offline.
 
 ![pokemon demo](./assets/pokemon.gif) ![zelda demo](./assets/zelda.gif)
 
-### Features
+## Origins
 
-- Supports most of the popular Game Boy and Game Boy Color games with sound (incl. Tetris, Pokémon, Mario, Zelda, and more!).
-- **Game Boy Color support** with full-color rendering, VRAM/WRAM banking, HDMA transfers, and compatibility palettes for DMG games.
-- **Link cable multiplayer** — run two emulator instances side-by-side with serial data exchange for local multiplayer.
-- **Battery-backed `.sav` support** on desktop and in the Fable/web build for cartridges with SRAM.
-- Runs [in the browser](https://nickkossolapov.github.io/fame-boy/) with a touch-friendly fully responsive design built with [Fable](https://fable.io/). A separate Thorium Pages deployment is also available at [thorium.github.io/fame-boy-color](https://thorium.github.io/fame-boy-color/).
-- Cross-platform too, it runs natively on Windows, macOS, and Linux (and others) with [Raylib](https://www.raylib.com/).
-- Zero-dependency [F# core](./src/FameBoy) with robust typing and built with functional programming in mind.
+Fame Boy Color started as a fork of [Fame Boy](https://github.com/nickkossolapov/fame-boy) by Nick Kossolapov, an original Game Boy (DMG) emulator in F#. Nick wrote about its architecture and the experience of building it in [I built a Game Boy emulator in F#](https://nickkossolapov.github.io/fame-boy/building-a-game-boy-emulator-in-fsharp/) — that post is still the best introduction to the core design, and a copy of it lives in [`docs/blog.md`](./docs/blog.md).
 
-### About
+This repository has since diverged into its own project and is developed independently: it adds Game Boy Color support, link cable multiplayer, battery saves and the installable web app, and it will not be merged back upstream. The core emulator, the readable/idiomatic F# style, and the MIT license are inherited from the original — thank you, Nick.
 
-Nick wrote about the architecture and his general experience in a blog post: [I built a Game Boy emulator in F#](https://nickkossolapov.github.io/fame-boy/building-a-game-boy-emulator-in-fsharp/)
+## Features
 
-This project was a way for him to learn more about computer hardware. The original Game Boy felt like the perfect target: well-defined in
-scope while still complex enough to learn about a real system, and chock-full of nostalgia.
+- Runs most popular Game Boy and Game Boy Color games with sound (Tetris, Pokémon, Mario, Zelda, and more).
+- **Game Boy Color support** — full-colour rendering, VRAM/WRAM banking, HDMA transfers, CPU double-speed mode, and the boot-ROM compatibility palettes for original DMG games.
+- **Link cable multiplayer** — two emulator instances side-by-side exchanging serial data, for local two-player games (Pokémon trading and battles, Tetris versus, …).
+- **Battery-backed `.sav` support** for cartridges with SRAM — a `.sav` file next to the ROM on desktop, `localStorage` in the browser.
+- **Browser version** with a touch-friendly, responsive on-screen Game Boy, keyboard controls, display scaling, an FPS counter and a mute button. It is an installable PWA that also works offline.
+- **Desktop version** for Windows, macOS and Linux via Raylib, with fullscreen (F11) and window scaling.
+- Zero-dependency [F# core](./src/FameBoy) shared by every front-end, with the unit and integration tests to match.
 
-Along the way, he mostly optimised for readability, idiomatic F#, and having fun in the process, rather than chasing perfect hardware
-accuracy or maximum performance.
+## Limitations
 
-This branch is extension with more features over the original demo.
-
-### Limitations
-
-There are still a few gaps with the real hardware that I may or may not get to (but would like to).
+There are still gaps against the real hardware that may or may not get closed:
 
 - Limited emulator configuration (no fast-forward, key remapping, or custom palettes).
-- Missing save states.
-- Hardware inaccuracies (e.g. CPU instruction-level rather than M-cycle-level timing, scanline-based rendering rather than pixel FIFOs, and missing a few hardware features/bugs).
+- No save states (only cartridge SRAM saves).
+- Hardware inaccuracies: CPU instruction-level rather than M-cycle-level timing, scanline-based rendering rather than pixel FIFOs, and a few missing hardware features/bugs.
 
-### Repo structure
+## Repo structure
 
-- `FameBoy` - Core emulator library (CPU, PPU, memory, cartridges, IO)
-- `FameBoy.Raylib` - Native desktop frontend using Raylib
-- `FameBoy.Web` - Browser frontend using Fable and Vite
-- `FameBoy.Test` - Unit and integration tests
-- `FameBoy.Benchmark`, `FameBoy.Benchmark.Web` - Performance benchmarking projects
+- `src/FameBoy` — core emulator library (CPU, PPU, APU, memory, cartridges, IO, serial)
+- `src/FameBoy.Raylib` — native desktop front-end using Raylib
+- `src/FameBoy.Web` — browser front-end using Fable and Vite (the GitHub Pages site)
+- `src/FameBoy.Test` — unit and integration tests
+- `src/FameBoy.Benchmark`, `src/FameBoy.Benchmark.Web` — performance benchmarking projects
+- `docs/` — the original architecture write-up and diagram
 
-## Getting Started
+## Getting started
 
 ### Prerequisites
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/)
 - [Node.js](https://nodejs.org/) (for the web projects only)
 
-### Running it locally
-
-#### Desktop
+### Desktop
 
 ``` sh
 dotnet run --project src/FameBoy.Raylib -- <rom-file-path> [--link] [scale]
 ```
 
 - `scale` is an optional positive integer that controls the window size multiplier (default: 4).
-- `--link` enables link cable multiplayer mode (two instances side-by-side).
+- `--link` enables link cable multiplayer (two instances side-by-side in one window).
 - Press **F11** to toggle fullscreen.
+- Cartridge SRAM is saved to a `.sav` file with the same name as the ROM, next to it.
 
-#### Link Cable Multiplayer
-
-``` sh
-dotnet run --project src/FameBoy.Raylib -- <rom-file-path> --link
-```
-
-Runs two emulator instances in the same window connected via a simulated serial link cable. This enables local multiplayer for games that support it (e.g. Pokémon trading/battles, Tetris versus).
-
-#### Web
+### Web
 
 ``` sh
 cd src/FameBoy.Web
@@ -81,15 +71,13 @@ npm run dev
 
 This starts both Fable and Vite in watch mode. Use **Ctrl+C** to stop (not `q`).
 
-In the Fable/web build, SRAM-backed cartridge saves are persisted locally as browser `.sav` data via `localStorage`.
+The production build (what the [deploy workflow](./.github/workflows/deploy.yml) runs on every push to `main`) is `dotnet fable --run npx vite build`, with `PAGES_BASE_PATH` set to the repository name so the site works under `https://thorium.github.io/fame-boy-color/`.
+
+In the browser, cartridge SRAM saves are persisted as `localStorage` entries keyed by the ROM's title and hash, so a game keeps its progress across visits as long as the same ROM is loaded again.
 
 ### Testing
 
-The unit tests cover most of the core emulator, and the [integration tests](./src/FameBoy.Test/IntegrationTests.fs) run the
-emulator with the [dmg-acid2](https://github.com/mattcurrie/dmg-acid2) and [Blargg cpu_instrs](https://github.com/retrio/gb-test-roms)
-test ROMs, then compare the PPU's framebuffer with a known correct framebuffer.
-
-To run the tests:
+The unit tests cover most of the core emulator. The [integration tests](./src/FameBoy.Test/IntegrationTests.fs) run the emulator with the [dmg-acid2](https://github.com/mattcurrie/dmg-acid2) and [cgb-acid2](https://github.com/mattcurrie/cgb-acid2) PPU test ROMs and compare the framebuffer with a known-good one, and run [Blargg's cpu_instrs](https://github.com/retrio/gb-test-roms) checking its serial output for `Passed`.
 
 ``` sh
 dotnet test
@@ -97,11 +85,9 @@ dotnet test
 
 ### Benchmarks
 
-More details on the benchmarks and results in my [blog post](https://nickkossolapov.github.io/fame-boy/building-a-game-boy-emulator-in-fsharp/#benchmarks).
-
 #### Desktop
 
-The benchmark includes a few ROMs to run the emulator with in headless mode with [BenchmarkDotNet](https://benchmarkdotnet.org/).
+Runs a few ROMs headless with [BenchmarkDotNet](https://benchmarkdotnet.org/):
 
 ``` sh
 ./benchmark.ps1
@@ -116,8 +102,7 @@ dotnet run -c release
 
 #### Web
 
-There is also a basic Node.js benchmarking project using the same test ROMs and structure as the native benchmarking to better estimate
-browser performance.
+A Node.js benchmark using the same test ROMs and structure, to estimate browser performance:
 
 ``` sh
 ./benchmark-web.ps1
@@ -130,9 +115,9 @@ cd src/FameBoy.Benchmark.Web
 npm run bench
 ```
 
-### Controls
+## Controls
 
-#### Player 1
+### Player 1
 
 | Game Boy | Key           |
 |----------|---------------|
@@ -142,7 +127,7 @@ npm run bench
 | Start    | N             |
 | Select   | B             |
 
-#### Player 2 (link mode only)
+### Player 2 (link mode only)
 
 | Game Boy | Key             |
 |----------|-----------------|
@@ -152,11 +137,10 @@ npm run bench
 | Start    | End             |
 | Select   | Page Down       |
 
-The web version also supports mouse/touch.
+The web version also has on-screen buttons for mouse and touch; a keyboard is still the most comfortable way to play.
 
 ## License
 
-The Fame Boy source code is licensed under the [MIT License](./LICENSE).
+The Fame Boy Color source code is licensed under the [MIT License](./LICENSE); the original copyright belongs to Nick Kossolapov.
 
-This project redistributes an unmodified copy of [Tobu Tobu Girl DX](https://github.com/SimonLarsen/tobutobugirl-dx) by Simon Larsen,
-included under its original MIT/CC-BY licensing terms and is not covered by the above license.
+This project redistributes an unmodified copy of [Tobu Tobu Girl DX](https://github.com/SimonLarsen/tobutobugirl-dx) by Simon Larsen as the bundled demo game, included under its original MIT/CC-BY licensing terms and not covered by the above license.
