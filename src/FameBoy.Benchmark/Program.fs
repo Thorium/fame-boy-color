@@ -33,25 +33,20 @@ let benchmarkCycles =
     |> Map.ofList
 
 type EmulatorComparison() =
-    [<WarmupCount(5)>]
-    [<IterationCount(15)>]
-    [<Benchmark>]
+    [<WarmupCount(5); IterationCount(15); Benchmark>]
     member _.Flag() =
         runBenchmark "flag.gb" benchmarkCycles["Flag"] // short and cyclical
 
-    [<WarmupCount(3)>]
-    [<IterationCount(5)>]
-    [<Benchmark>]
+    [<WarmupCount(3); IterationCount(5); Benchmark>]
     member _.Roboto() =
         runBenchmark "roboto.gb" benchmarkCycles["Roboto"] // longer running with various types of rendering, no MBC
 
-    [<WarmupCount(3)>]
-    [<IterationCount(5)>]
-    [<Benchmark>]
+    [<WarmupCount(3); IterationCount(5); Benchmark>]
     member _.Merken() =
         runBenchmark "merken.gb" benchmarkCycles["Merken"] // longer running with MBC
 
 
+[<Literal>]
 let mCyclesPerFrame = 17_556.0
 
 type FpsColumn() =

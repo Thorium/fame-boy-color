@@ -99,15 +99,15 @@ let getPalettesForChecksum (checksum: uint8) =
     | 0x14uy -> (brownPalette, brownPalette, brownPalette)
     | 0x15uy -> (classicGreen, classicGreen, classicGreen)
     | 0x16uy -> (brownPalette, darkBluePalette, orangePalette)
-    | 0x17uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x19uy -> (brownPalette, brownPalette, brownPalette)
+    | 0x17uy
+    | 0x19uy
     | 0x1Duy -> (brownPalette, brownPalette, brownPalette)
     | 0x27uy -> (pastelPalette, pastelPalette, pastelPalette)
     | 0x28uy -> (redPalette, bluePalette, classicGreen)
-    | 0x29uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x34uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x36uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x39uy -> (brownPalette, brownPalette, brownPalette)
+    | 0x29uy
+    | 0x34uy
+    | 0x36uy
+    | 0x39uy
     | 0x43uy -> (brownPalette, brownPalette, brownPalette)
     | 0x46uy -> (bluePalette, bluePalette, bluePalette)
     | 0x4Euy -> (brownPalette, brownPalette, brownPalette)
@@ -117,34 +117,34 @@ let getPalettesForChecksum (checksum: uint8) =
     | 0x61uy -> (brownPalette, brownPalette, brownPalette)
     | 0x66uy -> (brownPalette, brownPalette, brownPalette) // Tetris
     | 0x67uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x69uy -> (classicGreen, classicGreen, classicGreen)
-    | 0x6Auy -> (classicGreen, classicGreen, classicGreen)
+    | 0x69uy
+    | 0x6Auy
     | 0x6Buy -> (classicGreen, classicGreen, classicGreen)
-    | 0x70uy -> (brownPalette, brownPalette, brownPalette)
+    | 0x70uy
     | 0x71uy -> (brownPalette, brownPalette, brownPalette)
     | 0x86uy -> (pastelPalette, pastelPalette, pastelPalette)
     | 0x88uy -> (bluePalette, bluePalette, bluePalette)
     | 0x8Cuy -> (brownPalette, brownPalette, brownPalette)
     | 0x92uy -> (orangePalette, orangePalette, orangePalette)
-    | 0x95uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x97uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x99uy -> (brownPalette, brownPalette, brownPalette)
-    | 0x9Auy -> (brownPalette, brownPalette, brownPalette)
-    | 0x9Duy -> (brownPalette, brownPalette, brownPalette)
+    | 0x95uy
+    | 0x97uy
+    | 0x99uy
+    | 0x9Auy
+    | 0x9Duy
     | 0xA2uy -> (brownPalette, brownPalette, brownPalette)
     | 0xA5uy -> (redPalette, redPalette, redPalette) // Pokemon Red
-    | 0xAAuy -> (brownPalette, brownPalette, brownPalette)
+    | 0xAAuy
     | 0xB3uy -> (brownPalette, brownPalette, brownPalette)
     | 0xBFuy -> (darkBluePalette, darkBluePalette, darkBluePalette)
-    | 0xC6uy -> (brownPalette, brownPalette, brownPalette)
-    | 0xCEuy -> (brownPalette, brownPalette, brownPalette)
-    | 0xD1uy -> (brownPalette, brownPalette, brownPalette)
-    | 0xDBuy -> (brownPalette, brownPalette, brownPalette)
-    | 0xE0uy -> (brownPalette, brownPalette, brownPalette)
-    | 0xE8uy -> (brownPalette, brownPalette, brownPalette)
+    | 0xC6uy
+    | 0xCEuy
+    | 0xD1uy
+    | 0xDBuy
+    | 0xE0uy
+    | 0xE8uy
     | 0xF0uy -> (brownPalette, brownPalette, brownPalette)
     | 0xF1uy -> (classicGreen, classicGreen, classicGreen)
-    | 0xF2uy -> (brownPalette, brownPalette, brownPalette)
+    | 0xF2uy
     | 0xFFuy -> (brownPalette, brownPalette, brownPalette)
     | _ -> (grayscale, grayscale, grayscale) // Default: neutral grayscale
 

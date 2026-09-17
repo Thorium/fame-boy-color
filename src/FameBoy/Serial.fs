@@ -88,13 +88,13 @@ let private applyArbitration (state: SerialState) (io: IoController) : uint8 =
             let peerRequestsMaster = peerSc &&& 0x81uy = 0x81uy
 
             if selfRequestsMaster && not peerRequestsMaster then
-                arbiter.ChooseMaster(state.IsLinkP1)
+                arbiter.ChooseMaster state.IsLinkP1
             elif peerRequestsMaster && not selfRequestsMaster then
                 arbiter.ChooseMaster(not state.IsLinkP1)
             elif selfRequestsMaster && peerRequestsMaster then
-                arbiter.ChooseMaster(true)
+                arbiter.ChooseMaster true
 
-            match arbiter.RoleFor(state.IsLinkP1) with
+            match arbiter.RoleFor state.IsLinkP1 with
             | Some isMasterRole ->
                 let newSc =
                     if isMasterRole then scInit ||| 0x01uy

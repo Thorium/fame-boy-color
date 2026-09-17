@@ -8,9 +8,13 @@ open FameBoy.IoController
 open FameBoy.Memory
 
 module private ScanlineTimings =
+    [<Literal>]
     let lineEnd = 456 // dots, end of blanks
+    [<Literal>]
     let frameEnd = 153uy // lines per screen
+    [<Literal>]
     let vBlankStart = 144uy // lines
+    [<Literal>]
     let oamScanEnd = 80 // dots
 
 open ScanlineTimings
@@ -120,13 +124,21 @@ let createPpu (memory: Memory) (io: IoController) =
 open StatRegister
 
 module Lcdc =
+    [<Literal>]
     let PpuEnable = 0b1000_0000uy
+    [<Literal>]
     let WindowMapArea = 0b0100_0000uy
+    [<Literal>]
     let WindowEnable = 0b0010_0000uy
+    [<Literal>]
     let TileDataArea = 0b0001_0000uy
+    [<Literal>]
     let BgMapArea = 0b0000_1000uy
+    [<Literal>]
     let ObjSize = 0b0000_0100uy
+    [<Literal>]
     let ObjEnable = 0b0000_0010uy
+    [<Literal>]
     let BgEnable = 0b0000_0001uy
 
     let inline isEnabled control (io: IoController) =
@@ -589,7 +601,7 @@ let private updateStatAndInterrupt (ppu: Ppu) =
 let stepPpu (ppu: Ppu) =
     if not (Lcdc.isEnabled Lcdc.PpuEnable ppu.IoController) then
         disablePpu ppu
-    else if ppu.Disabled then
+    elif ppu.Disabled then
         ppu.Disabled <- false
         ppu.IoController.PpuMode <- PpuMode.OamScan
 

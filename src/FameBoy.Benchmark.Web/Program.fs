@@ -34,6 +34,7 @@ let readRom (path: string) : uint8 array =
 
     arr
 
+[<Literal>]
 let mCyclesPerFrame = 17_556.0
 
 let runBenchmark name filename cycles iterations =
@@ -71,10 +72,10 @@ let main _ =
     printfn "Warmup..."
     let warmupBytes = readRom $"{resourceDir}flag.gb"
     let _, _, _, _, warmupStep, _, _ = createEmulator warmupBytes 4096 (fun () -> joypadState)
-    let mutable w = cpuFrequency
+    let rec retreatW w =
+        if w > 0 then retreatW (w - warmupStep ()) else w
 
-    while w > 0 do
-        w <- w - warmupStep ()
+    let w = retreatW cpuFrequency
 
     let results =
         benchmarks
@@ -88,9 +89,9 @@ let main _ =
 
     for name, meanMs, fps in results do
         if meanMs >= 1000.0 then
-            printfn $"| {name} | %.1f{fps} | %.1f{meanMs / 1000.0} s |"
+            printfn $"| %s{name} | %.1f{fps} | %.1f{meanMs / 1000.0} s |"
         else
-            printfn $"| {name} | %.1f{fps} | %.1f{meanMs} ms |"
+            printfn $"| %s{name} | %.1f{fps} | %.1f{meanMs} ms |"
 
     printfn ""
     0

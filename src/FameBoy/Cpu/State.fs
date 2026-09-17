@@ -79,9 +79,13 @@ type Registers() =
 
 
 module Flags =
+    [<Literal>]
     let ZMask = 0b10000000uy
+    [<Literal>]
     let NMask = 0b01000000uy
+    [<Literal>]
     let HMask = 0b00100000uy
+    [<Literal>]
     let CMask = 0b00010000uy
 
     let inline setZ (v: bool) (f: uint8) =

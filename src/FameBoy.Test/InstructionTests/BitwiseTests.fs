@@ -9,6 +9,7 @@ open FameBoy.Memory
 open FameBoy.Test.TestHelpers
 open NUnit.Framework
 
+[<Literal>]
 let twoBitPrefix = 0xCBuy
 
 let setCpuFlags (z: bool, n: bool, h: bool, c: bool) (cpu: Cpu) =
@@ -65,8 +66,7 @@ let accumulatorTestData =
          ExpectedFlags = (false, false, false, true) } |]
     |> Array.map (fun d -> TestCaseData(d).SetName d.Description)
 
-[<Test>]
-[<TestCaseSource(nameof accumulatorTestData)>]
+[<Test; TestCaseSource(nameof accumulatorTestData)>]
 let ``Test rotate accumulator instructions`` (data: BitwiseTestData) =
     // Setup
     let cpu, io = createTestCpu [||]
@@ -194,8 +194,7 @@ let registerDirectTestData =
          ExpectedFlags = (true, true, true, true) } |]
     |> Array.map (fun d -> TestCaseData(d).SetName d.Description)
 
-[<Test>]
-[<TestCaseSource(nameof registerDirectTestData)>]
+[<Test; TestCaseSource(nameof registerDirectTestData)>]
 let ``Test bitwise register (direct) instructions`` (data: BitwiseTestData) =
     // Setup
     let cpu, io = createTestCpu [||]
@@ -292,8 +291,7 @@ let hlIndirectTestData =
          ExpectedFlags = (true, true, true, true) } |]
     |> Array.map (fun d -> TestCaseData(d).SetName d.Description)
 
-[<Test>]
-[<TestCaseSource(nameof hlIndirectTestData)>]
+[<Test; TestCaseSource(nameof hlIndirectTestData)>]
 let ``Test bitwise HL (indirect) instructions`` (data: BitwiseTestData) =
     // Setup
     let cpu, io = createTestCpu [||]

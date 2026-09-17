@@ -9,7 +9,9 @@ open FameBoy.Raylib.Utils.RateLimiting
 open Raylib_cs
 
 module GraphicsPipeline =
+    [<Literal>]
     let private mapSide = 256 // 32 tiles -> 32 * 8 pixels
+    [<Literal>]
     let private tilesHeight = 96 // 384 tiles -> 12 lines at 32 tiles per line * 8 pixels
 
     let mutable private screenTexture =
@@ -34,7 +36,7 @@ module GraphicsPipeline =
            Color(74, 87, 34)
            Color(19, 22, 8) |]
 
-    let private mapToColors = Array.map (fun (s: Shade) -> shades[int (s)])
+    let private mapToColors = Array.map (fun (s: Shade) -> shades[int s])
 
     let private mapCgbColors (framebuffer: FameBoy.Ppu.Color array) =
         framebuffer |> Array.map (fun c -> Color(int c.R, int c.G, int c.B, 255))

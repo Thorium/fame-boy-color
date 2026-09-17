@@ -274,8 +274,7 @@ let instructionMappingCases =
        0xFF, "rst 38h", Rst 0x38uy |> Control |]
     |> Array.map (fun (opcode, label, instr) -> TestCaseData(uint8 opcode, instr).SetName $"Check 0x{opcode:X2} to {label} mapping")
 
-[<Test>]
-[<TestCaseSource(nameof instructionMappingCases)>]
+[<Test; TestCaseSource(nameof instructionMappingCases)>]
 let ``Check opcode to instruction mapping`` (opcode: int, expectedInstr: Instruction) =
     let memory = createTestMemory [| uint8 opcode; 0x01uy; 0x01uy |]
 
@@ -323,8 +322,7 @@ let twoByteTestCases =
     Array.append rotateSwapCases remainingTwoByteTestCases
     |> Array.map (fun (opcode, label, instr) -> TestCaseData(uint8 opcode, instr).SetName $"Check 0xCB{opcode:X2} to {label} mapping")
 
-[<Test>]
-[<TestCaseSource(nameof twoByteTestCases)>]
+[<Test; TestCaseSource(nameof twoByteTestCases)>]
 let ``Check two-byte opcode to instruction mapping`` (opcode: int, expectedInstr: Instruction) =
     let memory = createTestMemory [| 0xCBuy; uint8 opcode |]
 

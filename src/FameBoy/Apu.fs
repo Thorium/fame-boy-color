@@ -348,7 +348,7 @@ module private NoiseChannel =
         ch.Period <- getPeriod nr43
         ch.Timer <- ch.Period
         ch.Lfsr <- 0x7FFF
-        ch.WideMode <- not (nr43 &&& 0b1000 <> 0)
+        ch.WideMode <- (nr43 &&& 0b1000) = 0
         ch.Enabled <- (nr42 &&& 0b1111_1000) <> 0
 
         ch.Length.Counter <- 64 - (nr41 &&& 0b0011_1111)

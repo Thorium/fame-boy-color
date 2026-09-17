@@ -173,9 +173,7 @@ let ``Writes to ROM-only cartridge are no-ops`` () =
     Assert.That(cart.RomOffset, Is.EqualTo romOffset)
     Assert.That(cart.RamEnabled, Is.EqualTo ramEnabled)
 
-[<TestCase(0x01uy, 33)>]
-[<TestCase(0x02uy, 65)>]
-[<TestCase(0x03uy, 97)>]
+[<TestCase(0x01uy, 33); TestCase(0x02uy, 65); TestCase(0x03uy, 97)>]
 let ``Zero low-register translation applies even when high-register is set`` (upperReg: byte) (expectedBank: int) =
     let cart = makeMbc1Cart 128
 

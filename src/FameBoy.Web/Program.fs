@@ -33,15 +33,15 @@ let getJoypadState = initJoypad ()
 let getJoypadState2 = initJoypadP2 ()
 
 let frameDrivenParam =
-    match URLSearchParams.Create(window.location.search).get("frame-driven") with
+    match URLSearchParams.Create(window.location.search).get "frame-driven" with
      | Some "false" -> false
      | Some _ -> true
      | _ -> false
 
 let linkModeParam =
-    match URLSearchParams.Create(window.location.search).get("link") with
+    match URLSearchParams.Create(window.location.search).get "link" with
     | Some _ -> true
-    | _ -> false
+    | Option.None -> false
 
 let screenCanvas = getElement "screen" :?> HTMLCanvasElement
 let root = getElement "root"
@@ -126,10 +126,7 @@ let private romTitle (bytes: byte array) =
         if String.IsNullOrWhiteSpace title then "rom" else title
 
 let private romHash (bytes: byte array) =
-    let mutable hash = 5381
-
-    for b in bytes do
-        hash <- ((hash <<< 5) + hash) ^^^ int b
+    let hash = bytes |> Array.fold (fun hash b -> ((hash <<< 5) + hash) ^^^ int b) 5381
 
     hash &&& 0x7FFFFFFF
 
@@ -160,7 +157,7 @@ let private hexValue c =
 
 let private tryParseHex (value: string) =
     if String.IsNullOrEmpty value || value.Length % 2 <> 0 then
-        None
+        ValueNone
     else
         let bytes = Array.zeroCreate<byte> (value.Length / 2)
         let mutable isValid = true
@@ -174,7 +171,7 @@ let private tryParseHex (value: string) =
             else
                 bytes[i] <- byte ((hi <<< 4) ||| lo)
 
-        if isValid then Some bytes else None
+        if isValid then ValueSome bytes else ValueNone
 
 let private loadSaveRam key (ram: byte array) =
     if ram.Length > 0 then
@@ -183,8 +180,8 @@ let private loadSaveRam key (ram: byte array) =
             | null -> ()
             | value ->
                 match tryParseHex value with
-                | Some saveBytes -> Array.Copy(saveBytes, ram, min saveBytes.Length ram.Length)
-                | None -> ()
+                | ValueSome saveBytes -> Array.Copy(saveBytes, ram, min saveBytes.Length ram.Length)
+                | ValueNone -> ()
         with _ ->
             ()
 
@@ -214,7 +211,7 @@ let startEmulator bytes =
             createEmulatorWithMemory bytes 4096 getJoypadState
         with ex ->
             showOverlayError "Error!<br>Invalid ROM"
-            raise ex
+            reraise ()
 
     let saveKey = saveKey bytes
     loadSaveRam saveKey memory1.Cartridge.Ram
@@ -431,7 +428,7 @@ let private assetUrl fileName =
             let lastSlash = pathname.LastIndexOf "/"
             let lastSegment = pathname.Substring(lastSlash + 1)
 
-            if lastSegment.Contains "." then
+            if lastSegment.Contains '.' then
                 pathname.Substring(0, lastSlash + 1)
             else
                 pathname + "/"

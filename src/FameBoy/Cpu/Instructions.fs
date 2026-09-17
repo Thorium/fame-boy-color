@@ -162,7 +162,7 @@ type ControlInstr =
     | Rst of uint8
 
 type LoadInstr =
-    | Ld8 of Target * Source
+    | Ld8 of w: Target * s: Source
     | LdA of LoadA * ASource
     | Ldh of LoadA * AHighSource
     | Ld16FromWord of Reg16 * uint16
@@ -176,10 +176,14 @@ type LogicInstr =
     | And of Source
     | Or of Source
     | Xor of Source
-    | Ccf // Complementing carry flag
-    | Scf // Set carry flag
-    | Daa // Decimal adjust accumulator
-    | Cpl // Complement accumulator
+    /// Complementing carry flag
+    | Ccf
+    /// Set carry flag
+    | Scf
+    /// Decimal adjust accumulator
+    | Daa
+    /// Complement accumulator
+    | Cpl
 
 type Instruction =
     | Halt
@@ -240,7 +244,7 @@ module private LengthsAndCycles =
 
         function
         | Rlca
-        | Rrca -> 1, Fixed 1
+        | Rrca
         | Rra
         | Rla -> 1, Fixed 1
         | Rlc w
@@ -284,7 +288,7 @@ module private LengthsAndCycles =
                 | Source.HLIndirect -> 1, Fixed 1 // ld [hl],[hl] is actually decoded as HALT
         | LdA(_, s) ->
             match s with
-            | AtBC -> 1, Fixed 2
+            | AtBC
             | AtDE -> 1, Fixed 2
             | AtWord _ -> 3, Fixed 4
             | AtHLInc
@@ -305,9 +309,9 @@ module private LengthsAndCycles =
         | And bs -> forReadByte bs
         | Or bs -> forReadByte bs
         | Xor bs -> forReadByte bs
-        | Ccf -> 1, Fixed 1
-        | Scf -> 1, Fixed 1
-        | Daa -> 1, Fixed 1
+        | Ccf
+        | Scf
+        | Daa
         | Cpl -> 1, Fixed 1
 
 let withLengthAndCycles (instr: Instruction) =
@@ -315,8 +319,8 @@ let withLengthAndCycles (instr: Instruction) =
         match instr with
         | Halt -> 1, Fixed 1
         | Stop -> 2, Fixed 2
-        | Di -> 1, Fixed 1
-        | Ei -> 1, Fixed 1
+        | Di
+        | Ei
         | Nop -> 1, Fixed 1
         | Arithmetic arithmeticInstr -> LengthsAndCycles.forArithmetic arithmeticInstr
         | Bitwise bitwiseInstr -> LengthsAndCycles.forBitwise bitwiseInstr

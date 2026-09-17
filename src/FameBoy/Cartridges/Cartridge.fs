@@ -46,7 +46,7 @@ module private Headers =
         | 0x1Cuy -> Mbc5Cart.createState romSize true |> Mbc5, false
         | 0x1Duy
         | 0x1Euy -> Mbc5Cart.createState romSize true |> Mbc5, true
-        | _ -> failwith "Unimplemented MBC"
+        | _ -> failwith $"Unimplemented MBC, calling getMbc with romSize: {romSize}"
 
 open Headers
 
