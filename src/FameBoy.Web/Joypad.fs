@@ -2,9 +2,21 @@
 
 open Browser
 open Browser.Types
+open Fable.Core.JsInterop
 open FameBoy.Joypad
 
 module private Helpers =
+    /// Keys for an open dialog (the game list), a drop-down or a text field are
+    /// not joypad input; arrow keys stay with those controls.
+    let isTextEntry (ev: Event) =
+        let target = ev.target
+
+        not (isNull target)
+        && (target?tagName = "TEXTAREA"
+            || target?tagName = "SELECT"
+            || (target?tagName = "INPUT" && (target?``type`` = "search" || target?``type`` = "text"))
+            || not (isNull (target?closest "dialog[open]")))
+
     [<Struct>]
     type JoypadButton =
         | Up
@@ -90,8 +102,8 @@ let initJoypad () =
             let code = (ev :?> KeyboardEvent).code
 
             match Map.tryFind code buttonByKeyCode with
-            | Some b -> pressed <- pressed.Add b
-            | None -> ()
+            | Some b when not (isTextEntry ev) -> pressed <- pressed.Add b
+            | _ -> ()
     )
 
     window.addEventListener (
@@ -130,10 +142,10 @@ let initJoypadP2 () =
             let code = ke.code
 
             match Map.tryFind code p2ButtonByKeyCode with
-            | Some b ->
+            | Some b when not (isTextEntry ev) ->
                 ev.preventDefault ()
                 pressed <- pressed.Add b
-            | None -> ()
+            | _ -> ()
     )
 
     window.addEventListener (

@@ -4,7 +4,7 @@
 
 A Game Boy and Game Boy Color emulator written in F#. It runs in the browser (compiled with [Fable](https://fable.io/)) and natively on the desktop (with [Raylib](https://www.raylib.com/)).
 
-**▶ [Play online](https://thorium.github.io/fame-boy-color/)** (browser version, no install needed — comes with a bundled demo game, or upload your own `.gb` / `.gbc` ROM)
+**▶ [Play online](https://thorium.github.io/fame-boy-color/)** (browser version, no install needed — pick one of the featured free homebrew games, some with two-player link play, browse 800+ more from [Homebrew Hub](https://hh.gbdev.io/), or load your own `.gb` / `.gbc` ROM, which never leaves your machine)
 
 **📱 Install as an app:** open the same link on your phone or tablet and tap **Install app** in the banner (Android / Chrome), or **Share → Add to Home Screen** (iPhone / iPad). The emulator then launches full-screen from your home screen and works offline.
 

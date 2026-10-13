@@ -19,7 +19,9 @@ export default defineConfig({
   server: {
     watch: {
       ignored: [
-        "**/*.fs" // Don't watch F# files
+        "**/*.fs", // Don't watch F# files
+        "**/obj/**", // .NET build output: its locked temp files crash the watcher (EBUSY)
+        "**/bin/**"
       ]
     }
   }

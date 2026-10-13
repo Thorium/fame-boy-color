@@ -20,19 +20,26 @@ let inline toJoypadRegisterValue (state: JoypadState) (current: uint8) =
     let selectButtons = (current &&& 0b100000uy) = 0uy
     let selectDPad = (current &&& 0b10000uy) = 0uy
 
+    let buttons =
+        toBitFlag state.Start 0b1000uy
+        ||| toBitFlag state.Select 0b100uy
+        ||| toBitFlag state.B 0b10uy
+        ||| toBitFlag state.A 0b1uy
+
+    let dPad =
+        toBitFlag state.Down 0b1000uy
+        ||| toBitFlag state.Up 0b100uy
+        ||| toBitFlag state.Left 0b10uy
+        ||| toBitFlag state.Right 0b1uy
+
+    // With both groups selected the lines are wired together: a key from
+    // either group pulls its bit low.
     let joypadFlags =
         match selectButtons, selectDPad with
-        | true, false ->
-            toBitFlag state.Start 0b1000uy
-            ||| toBitFlag state.Select 0b100uy
-            ||| toBitFlag state.B 0b10uy
-            ||| toBitFlag state.A 0b1uy
-        | false, true ->
-            toBitFlag state.Down 0b1000uy
-            ||| toBitFlag state.Up 0b100uy
-            ||| toBitFlag state.Left 0b10uy
-            ||| toBitFlag state.Right 0b1uy
-        | _ -> 0b1111uy
+        | true, false -> buttons
+        | false, true -> dPad
+        | true, true -> buttons &&& dPad
+        | false, false -> 0b1111uy
 
     (current &&& 0b11110000uy) ||| joypadFlags
 

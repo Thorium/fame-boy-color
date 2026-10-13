@@ -3,7 +3,10 @@ module FameBoy.Web.JsBindings
 open Fable.Core
 
 type IResponse =
+    abstract ok: bool
+    abstract status: int
     abstract arrayBuffer: unit -> JS.Promise<JS.ArrayBuffer>
+    abstract text: unit -> JS.Promise<string>
 
 [<Global>]
 let fetch (url: string) : JS.Promise<IResponse> = jsNative

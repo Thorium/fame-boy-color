@@ -1,6 +1,6 @@
 // Simple PWA service worker: network-first with cache fallback, so new
 // deployments show up immediately but the emulator (and the bundled demo
-// ROM) still open offline. Uploaded ROMs and .sav data never touch the
+// ROM) still open offline. User-loaded ROMs and .sav data never touch the
 // cache: ROMs stay in memory and saves live in localStorage.
 const CACHE = 'fameboy-v1';
 const PRECACHE = ['./', './index.html', './site.webmanifest', './android-chrome-192x192.png', './android-chrome-512x512.png', './tobudx.gb', './PressStart2P-Regular.ttf'];

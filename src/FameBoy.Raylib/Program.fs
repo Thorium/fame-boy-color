@@ -132,7 +132,8 @@ if Config.linkMode then
     Raylib.PlayAudioStream audioStream
 
     let mutable cycles1 = 0L
-    let mutable cycles2 = 0L
+    // Player 2 waits until player 1 has run this long.
+    let mutable cycles2 = int64 linkBootDelayCycles
 
     while (not (windowShouldClose ())) do
         if isKeyPressed KeyboardKey.F11 then

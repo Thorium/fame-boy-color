@@ -16,6 +16,15 @@
 </head>
 <body>
 <div id="root">
+    <section aria-labelledby="game-shelf-heading" class="game-shelf">
+        <h2 class="controls-heading" id="game-shelf-heading">Pick a game</h2>
+        <ul class="game-list" id="game-list">
+            <li class="game-item game-item-more">
+                <button class="more-games-button" id="more-games-button" type="button">More games…</button>
+            </li>
+        </ul>
+        <p class="game-shelf-note">Free homebrew games, downloaded from their authors' archives when you pick one.</p>
+    </section>
     <div class="shell-group">
         <div class="shell">
             <div class="screen-border">
@@ -82,7 +91,7 @@
     </div>
     <div class="sidebar">
         <label class="rom-upload" for="rom-file">
-            Upload your own ROM
+            Load your own ROM
             <input accept=".gb,.gbc" id="rom-file" type="file">
         </label>
         <fieldset aria-label="Display scale" class="scale-selector">
@@ -183,15 +192,44 @@
             </svg>
         </a>
         <div class="credit-container">
-            <div class="credit-text">
-                Demo game is <a href="https://tangramgames.itch.io/tobu-tobu-girl-deluxe" rel="noopener noreferrer" target="_blank">Tobu
-                Tobu Girl Deluxe</a>
-            </div>
+            <div class="credit-text" id="now-playing"></div>
             <div class="credit-text">﻿Tip: ﻿Best played with a keyboard!</div>
         </div>
     </div>
 
 </div>
+<dialog aria-labelledby="more-games-heading" class="more-games" id="more-games">
+    <form class="more-games-header" method="dialog">
+        <h2 id="more-games-heading">More homebrew games</h2>
+        <button aria-label="Close" class="more-games-close" type="submit">&#x2715;</button>
+    </form>
+    <input aria-label="Search by title or author" id="more-games-search" placeholder="Search by title or author" type="search">
+    <div class="more-games-filters">
+        <select aria-label="Sort" id="more-games-sort">
+            <option value="title">Name A–Z</option>
+            <option value="title-desc">Name Z–A</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+        </select>
+        <select aria-label="Platform" id="more-games-platform">
+            <option value="">GB + GBC</option>
+            <option value="GB">GB</option>
+            <option value="GBC">GBC (colour)</option>
+        </select>
+        <select aria-label="Genre" id="more-games-genre">
+            <option value="">All genres</option>
+        </select>
+        <label class="more-games-check">
+            <input id="more-games-licensed" type="checkbox"> Open license only
+        </label>
+    </div>
+    <p aria-live="polite" class="more-games-status" id="more-games-status">Loading…</p>
+    <ul class="more-games-list" id="more-games-list"></ul>
+    <p class="more-games-note">
+        From <a href="https://hh.gbdev.io/" rel="noopener noreferrer" target="_blank">Homebrew Hub</a>, plus a few games
+        from their authors' own repositories. Each game belongs to its author; it is downloaded from that archive when you pick it.
+    </p>
+</dialog>
 <!-- "Install as app" banner: only shown on mobile browsers when the page is
      not already running as an installed PWA (see the script below). -->
 <div id="install" hidden role="region" aria-label="Install Fame Boy as an app">

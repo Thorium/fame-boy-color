@@ -20,6 +20,7 @@ open FameBoy.Hardware
 open FameBoy.Ppu
 open FameBoy.Serial
 open FameBoy.Web.Audio
+open FameBoy.Web.Games
 open FameBoy.Web.Joypad
 open FameBoy.Web.JsBindings
 
@@ -194,7 +195,7 @@ let private persistCurrentSave () =
             ()
     | _ -> ()
 
-let private showOverlayError (message: string) =
+let private showOverlay (message: string) =
     startOverlay?innerHTML <- message
     startOverlay?classList?remove "hidden"
 
@@ -210,7 +211,7 @@ let startEmulator bytes =
         try
             createEmulatorWithMemory bytes 4096 getJoypadState
         with ex ->
-            showOverlayError "Error!<br>Invalid ROM"
+            showOverlay "Error!<br>Invalid ROM"
             reraise ()
 
     let saveKey = saveKey bytes
@@ -248,7 +249,8 @@ let startEmulator bytes =
     let maxCyclesPerFrame = float cpuFrequency / 60.0
     let mutable accumulator = 0.0
     let mutable cycles1 = 0.0
-    let mutable cycles2 = 0.0
+    // Player 2 waits until player 1 has run this long.
+    let mutable cycles2 = float linkBootDelayCycles
 
     let fpsWindowSize = 30
     let fpsHistory = Array.zeroCreate<float> fpsWindowSize
@@ -284,7 +286,8 @@ let startEmulator bytes =
                     exchangeSerial serial1 io1 serial2 io2
                 | None -> ()
 
-                accumulator <- accumulator - mCycles
+                // The budget is in normal-speed cycles; a double-speed CPU runs two per cycle.
+                accumulator <- accumulator - (if io1.DoubleSpeed then mCycles / 2.0 else mCycles)
  
         let stepWithLink () =
             let c = stepEmulator1 ()
@@ -327,28 +330,6 @@ let startEmulator bytes =
 
     currentAnimationFrame <- window.requestAnimationFrame (runEmulator 0) |> Some
 
-let onFileLoaded (ev: Event) =
-    let input = ev.target :?> HTMLInputElement
-    let files = input.files
-
-    if not (isNull files) && files.length > 0 then
-        let file = files.[0]
-        let reader = FileReader.Create()
-
-        reader.onload <-
-            fun _ ->
-                let arrayBuffer = reader.result :?> JS.ArrayBuffer
-                let uint8Array = JS.Constructors.Uint8Array.Create(arrayBuffer)
-                let bytes: byte array = Array.init (int uint8Array.length) (fun i -> uint8Array[i])
-
-                try
-                    startEmulator bytes
-                with _ ->
-                    ()
-
-        reader.readAsArrayBuffer file
-
-fileUploadButton.addEventListener ("change", onFileLoaded)
 window.addEventListener ("beforeunload", fun _ -> persistCurrentSave ())
 window.addEventListener ("pagehide", fun _ -> persistCurrentSave ())
 document.addEventListener ("visibilitychange", fun _ -> if document.visibilityState = "hidden" then persistCurrentSave ())
@@ -406,19 +387,6 @@ linkModeToggle.addEventListener (
         window.location.replace newUrl
 )
 
-// Pre-fetch the default ROM, then wait for user interaction to start
-// User interaction on the page is needed to start Web Audio
-let mutable private defaultRomBytes: byte array option = None
-let mutable private defaultRomStarted = false
-
-let private onFirstInteraction (_: Event) =
-    if not defaultRomStarted then
-        defaultRomStarted <- true
-
-        match defaultRomBytes with
-        | Some bytes -> startEmulator bytes
-        | None -> ()
-
 let private assetUrl fileName =
     let pathname = window.location.pathname
     let basePath =
@@ -435,21 +403,453 @@ let private assetUrl fileName =
 
     basePath + fileName
 
-let loadDefaultRom () =
+let private toBytes (arrayBuffer: JS.ArrayBuffer) : byte array =
+    let uint8Array = JS.Constructors.Uint8Array.Create(arrayBuffer)
+    Array.init (int uint8Array.length) (fun i -> uint8Array[i])
+
+let private fetchOk url =
     async {
-        try
-            let! response = fetch (assetUrl "tobudx.gb") |> Async.AwaitPromise
+        let! response = fetch url |> Async.AwaitPromise
+
+        if not response.ok then
+            failwith $"HTTP {response.status} for {url}"
+
+        return response
+    }
+
+/// Reads the body chunk by chunk, reporting (received, total) bytes; total is 0
+/// when the server sends no length.
+let private readWithProgress (response: IResponse) (progress: int -> int -> unit) =
+    async {
+        match response?body with
+        | null ->
             let! arrayBuffer = response.arrayBuffer () |> Async.AwaitPromise
-            let uint8Array = JS.Constructors.Uint8Array.Create(arrayBuffer)
-            let bytes: byte array = Array.init (int uint8Array.length) (fun i -> uint8Array[i])
+            return toBytes arrayBuffer
+        | body ->
+            let total =
+                match response?headers?get ("content-length") with
+                | null -> 0
+                | length -> int (string length)
 
-            defaultRomBytes <- Some bytes
+            let reader = body?getReader ()
+            let chunks = ResizeArray<JS.Uint8Array>()
+            let mutable received = 0
+            let mutable finished = false
 
-            document.addEventListener ("click", onFirstInteraction)
-            document.addEventListener ("keydown", onFirstInteraction)
-        with _ ->
-            showOverlayError "Error!<br>Couldn't load demo ROM"
+            while not finished do
+                let! chunk = (reader?read () : JS.Promise<obj>) |> Async.AwaitPromise
+
+                if chunk?``done`` then
+                    finished <- true
+                else
+                    let value: JS.Uint8Array = chunk?value
+                    chunks.Add value
+                    received <- received + int value.length
+                    progress received total
+
+            let bytes = Array.zeroCreate<byte> received
+            let mutable offset = 0
+
+            for chunk in chunks do
+                bytes?set (chunk, offset)
+                offset <- offset + int chunk.length
+
+            return bytes
+    }
+
+let private fetchRom (game: Game) (progress: int -> int -> unit) =
+    async {
+        let url = if game.Rom.StartsWith "https://" then game.Rom else assetUrl game.Rom
+        let! response = fetchOk url
+        return! readWithProgress response progress
+    }
+
+/// "Loading… 45%" on the screen while a ROM downloads.
+let private loadingText (received: int) (total: int) =
+    if total > 0 then
+        $"Loading…<br>%d{min 100 (received * 100 / total)}%%"
+    else
+        $"Loading…<br>%d{received / 1024} KB"
+
+/// A "More games" entry: the playable game plus the catalogue's metadata.
+type private CatalogueGame =
+    { Game: Game
+      Platform: string
+      Genres: string array
+      HasLicense: bool
+      /// Release date (yyyy-MM-dd or yyyy) when known, else "".
+      Released: string
+      /// Date the game was added to Homebrew Hub (yyyy-MM-dd).
+      Added: string }
+
+    /// Release date, or the date added to Homebrew Hub when that is unknown.
+    member this.Date = if this.Released <> "" then this.Released else this.Added
+
+// "More games": the Homebrew Hub catalogue generated by build-moregames.fsx,
+// fetched the first time it is needed.
+let mutable private moreGames: CatalogueGame list option = None
+
+let private loadMoreGames () =
+    async {
+        match moreGames with
+        | Some games -> return games
+        | None ->
+            let! response = fetchOk (assetUrl "moregames.json")
+            let! text = response.text () |> Async.AwaitPromise
+            let catalogue = JS.JSON.parse text
+            let romBase: string = catalogue?romBase
+            let infoBase: string = catalogue?infoBase
+
+            let games =
+                (catalogue?games: obj array)
+                |> Array.map (fun g ->
+                    let license: string = g?license
+                    // Entries outside Homebrew Hub carry their own URLs.
+                    let romUrl: string = g?romUrl
+                    let info: string = g?info
+
+                    { Game =
+                        { Id = g?id
+                          Title = g?title
+                          Author = g?author
+                          Genre = g?platform
+                          LinkCable = (g?linkCable: obj) = box true
+                          License = if license = "" then "no license stated" else license
+                          Rom = if isNull romUrl then romBase + g?rom else romUrl
+                          Screenshot = ""
+                          Info = if isNull info then infoBase + g?id else info }
+                      Platform = g?platform
+                      Genres = g?genres
+                      HasLicense = license <> ""
+                      Released = g?released
+                      Added = g?added })
+                |> Array.toList
+
+            moreGames <- Some games
+            return games
+    }
+
+let private gameParam = URLSearchParams.Create(window.location.search).get "game"
+let private gameList = getElement "game-list"
+let private nowPlaying = getElement "now-playing"
+
+// Bumped on every game start, so a slow download can't replace a newer pick.
+let mutable private loadGeneration = 0
+let mutable private started = false
+
+/// Shows the game as current: shelf highlight, credit line and the ?game=
+/// parameter, which survives the reload when link mode is toggled.
+let private markCurrent (game: Game option) (updateUrl: bool) =
+    let cards = gameList.querySelectorAll ".game-card"
+
+    for i in 0 .. int cards.length - 1 do
+        let card = cards.[i] :?> HTMLElement
+        let isCurrent = game |> Option.exists (fun g -> g.Id = card?dataset?gameId)
+        card.setAttribute ("aria-current", (if isCurrent then "true" else "false"))
+
+    nowPlaying.textContent <- ""
+
+    match game with
+    | Some game ->
+        let link = document.createElement "a" :?> HTMLAnchorElement
+        link.href <- game.Info
+        link.target <- "_blank"
+        link.rel <- "noopener noreferrer"
+        link.textContent <- game.Title
+        nowPlaying.appendChild (document.createTextNode "Playing ") |> ignore
+        nowPlaying.appendChild link |> ignore
+        nowPlaying.appendChild (document.createTextNode $" by {game.Author} · {game.License}") |> ignore
+    | None -> nowPlaying.textContent <- "Playing your own ROM"
+
+    if updateUrl then
+        let urlParams = URLSearchParams.Create(window.location.search)
+
+        match game with
+        | Some game -> urlParams.set ("game", game.Id)
+        | None -> urlParams.delete "game"
+
+        let query = urlParams.ToString()
+        let url = if query = "" then window.location.pathname else $"%s{window.location.pathname}?%s{query}"
+        history.replaceState (null, "", url)
+
+let private playGame (game: Game) =
+    started <- true
+    loadGeneration <- loadGeneration + 1
+    let generation = loadGeneration
+    markCurrent (Some game) true
+    showOverlay "Loading…"
+
+    let progress received total =
+        if generation = loadGeneration then
+            showOverlay (loadingText received total)
+
+    async {
+        match! fetchRom game progress |> Async.Catch with
+        | Choice1Of2 bytes when generation = loadGeneration ->
+            try
+                startEmulator bytes
+            with _ ->
+                ()
+        | Choice2Of2 _ when generation = loadGeneration -> showOverlay "Error!<br>Couldn't download game"
+        | _ -> ()
     }
     |> Async.StartImmediate
 
-loadDefaultRom ()
+/// The "2P" badge of a link-cable game. Outside link mode it reloads straight
+/// into a two-player game.
+let private linkBadge (game: Game) =
+    let badge = document.createElement (if linkModeParam then "span" else "a")
+    badge.className <- "game-badge"
+    badge.textContent <- "2P"
+
+    if linkModeParam then
+        badge.title <- "Two players over the link cable"
+    else
+        badge.setAttribute ("href", $"?link=1&game={game.Id}")
+        badge.title <- $"Play {game.Title} with two players"
+
+    badge
+
+let private gameCard (game: Game) =
+    let item = document.createElement "li"
+    item.className <- "game-item"
+
+    let card = document.createElement "button" :?> HTMLButtonElement
+    card.setAttribute ("type", "button")
+    card.className <- "game-card"
+    card?dataset?gameId <- game.Id
+    card.title <- $"{game.Title} by {game.Author} ({game.License})"
+
+    let image = document.createElement "img" :?> HTMLImageElement
+    image.src <- game.Screenshot
+    image.alt <- ""
+    image.setAttribute ("loading", "lazy")
+
+    let title = document.createElement "span"
+    title.className <- "game-card-title"
+    title.textContent <- game.Title
+
+    let genre = document.createElement "span"
+    genre.className <- "game-card-genre"
+    genre.textContent <- game.Genre
+
+    card.appendChild image |> ignore
+    card.appendChild title |> ignore
+    card.appendChild genre |> ignore
+    card.addEventListener ("click", fun _ -> playGame game)
+    item.appendChild card |> ignore
+
+    if game.LinkCable then
+        item.appendChild (linkBadge game) |> ignore
+
+    item
+
+// Cards go before the "More games" tile, which stays last.
+let private moreGamesTile = gameList.querySelector ".game-item-more"
+
+for game in featured do
+    gameList.insertBefore (gameCard game, moreGamesTile) |> ignore
+
+let private moreGamesDialog = getElement "more-games"
+let private moreGamesList = getElement "more-games-list"
+let private moreGamesSearch = getElement "more-games-search" :?> HTMLInputElement
+let private moreGamesStatus = getElement "more-games-status"
+let private moreGamesSort = getElement "more-games-sort" :?> HTMLSelectElement
+let private moreGamesPlatform = getElement "more-games-platform" :?> HTMLSelectElement
+let private moreGamesGenre = getElement "more-games-genre" :?> HTMLSelectElement
+let private moreGamesLicensed = getElement "more-games-licensed" :?> HTMLInputElement
+
+/// Genre filter value that selects the link-cable games instead of a genre.
+[<Literal>]
+let private twoPlayers = "@2p"
+
+/// Fills the genre filter, "2 players" then the most common genre first,
+/// once the catalogue is in.
+let private fillGenres (games: CatalogueGame list) =
+    if moreGamesGenre.options.length <= 1 then
+        let linkGames = games |> List.filter (fun g -> g.Game.LinkCable) |> List.length
+
+        (twoPlayers, $"2 players ({linkGames})")
+        :: (games
+            |> List.collect (fun g -> List.ofArray g.Genres)
+            |> List.countBy id
+            |> List.sortBy (fun (genre, count) -> -count, genre)
+            |> List.map (fun (genre, count) -> genre, $"{genre} ({count})"))
+        |> List.iter (fun (value, label) ->
+            let option = document.createElement "option" :?> HTMLOptionElement
+            option.value <- value
+            option.textContent <- label
+            moreGamesGenre.appendChild option |> ignore)
+
+/// "2021", or "added 2021" when the release date is unknown.
+let private yearLabel (entry: CatalogueGame) =
+    if entry.Released <> "" then entry.Released.Substring(0, 4)
+    elif entry.Added <> "" then $"added {entry.Added.Substring(0, 4)}"
+    else ""
+
+let private renderMoreGames (games: CatalogueGame list) =
+    fillGenres games
+    let query = moreGamesSearch.value.Trim().ToLowerInvariant()
+    let platform = moreGamesPlatform.value
+    let genre = moreGamesGenre.value
+    let licensedOnly = moreGamesLicensed.``checked``
+    let byTitle (e: CatalogueGame) = e.Game.Title.ToLowerInvariant()
+
+    let matches =
+        games
+        |> List.filter (fun e ->
+            (query = ""
+             || e.Game.Title.ToLowerInvariant().Contains query
+             || e.Game.Author.ToLowerInvariant().Contains query)
+            && (platform = "" || e.Platform = platform)
+            && (genre = ""
+                || (genre = twoPlayers && e.Game.LinkCable)
+                || Array.contains genre e.Genres)
+            && (not licensedOnly || e.HasLicense))
+        |> match moreGamesSort.value with
+           | "title-desc" -> List.sortByDescending byTitle
+           | "newest" -> List.sortBy byTitle >> List.sortByDescending (fun e -> e.Date)
+           | "oldest" -> List.sortBy byTitle >> List.sortBy (fun e -> e.Date)
+           | _ -> List.sortBy byTitle
+
+    moreGamesList.textContent <- ""
+
+    for entry in matches do
+        let game = entry.Game
+        let item = document.createElement "li"
+
+        let button = document.createElement "button" :?> HTMLButtonElement
+        button.setAttribute ("type", "button")
+        button.className <- "more-games-item"
+
+        let title = document.createElement "span"
+        title.className <- "more-games-title"
+        title.textContent <- game.Title
+
+        let details = document.createElement "span"
+        details.className <- "more-games-details"
+        details.textContent <-
+            [ game.Author; entry.Platform; yearLabel entry; String.Join(", ", entry.Genres); game.License ]
+            |> List.filter (fun part -> part <> "")
+            |> String.concat " · "
+
+        button.appendChild title |> ignore
+        button.appendChild details |> ignore
+
+        button.addEventListener (
+            "click",
+            fun _ ->
+                moreGamesDialog?close ()
+                playGame game
+        )
+
+        let info = document.createElement "a" :?> HTMLAnchorElement
+        info.className <- "more-games-info"
+        info.href <- game.Info
+        info.target <- "_blank"
+        info.rel <- "noopener noreferrer"
+        info.textContent <- "Info"
+        info.setAttribute ("aria-label", $"About {game.Title}")
+
+        item.appendChild button |> ignore
+
+        if game.LinkCable then
+            item.appendChild (linkBadge game) |> ignore
+
+        item.appendChild info |> ignore
+        moreGamesList.appendChild item |> ignore
+
+    moreGamesStatus.textContent <- $"{matches.Length} of {games.Length} games"
+
+(getElement "more-games-button").addEventListener (
+    "click",
+    fun _ ->
+        moreGamesDialog?showModal ()
+
+        async {
+            match! loadMoreGames () |> Async.Catch with
+            | Choice1Of2 games -> renderMoreGames games
+            | Choice2Of2 _ -> moreGamesStatus.textContent <- "Couldn't load the game list."
+        }
+        |> Async.StartImmediate
+)
+
+moreGamesSearch.addEventListener ("input", fun _ -> moreGames |> Option.iter renderMoreGames)
+
+for control in [ moreGamesSort :> HTMLElement; moreGamesPlatform; moreGamesGenre; moreGamesLicensed ] do
+    control.addEventListener ("change", fun _ -> moreGames |> Option.iter renderMoreGames)
+
+let private onFileLoaded (ev: Event) =
+    let input = ev.target :?> HTMLInputElement
+    let files = input.files
+
+    if not (isNull files) && files.length > 0 then
+        let file = files.[0]
+        let reader = FileReader.Create()
+        started <- true
+        loadGeneration <- loadGeneration + 1
+        let generation = loadGeneration
+
+        reader.onload <-
+            fun _ ->
+                if generation = loadGeneration then
+                    markCurrent None true
+
+                    try
+                        startEmulator (toBytes (reader.result :?> JS.ArrayBuffer))
+                    with _ ->
+                        ()
+
+        reader.readAsArrayBuffer file
+
+fileUploadButton.addEventListener ("change", onFileLoaded)
+
+// Pre-fetch the startup game (?game=<id>, or the demo), then wait for user
+// interaction to start: Web Audio needs it. Picking a game starts directly.
+let mutable private startupRom: byte array option = None
+
+let private onFirstInteraction (ev: Event) =
+    let isGameChoice = not (isNull (ev.target?closest (".game-shelf, #more-games, .rom-upload")))
+
+    if not (started || isGameChoice) then
+        started <- true
+        startupRom |> Option.iter startEmulator
+
+let private startupGame () =
+    async {
+        match gameParam with
+        | Some id ->
+            match featured |> List.tryFind (fun g -> g.Id = id) with
+            | Some game -> return game
+            | None ->
+                match! loadMoreGames () |> Async.Catch with
+                | Choice1Of2 games ->
+                    match games |> List.tryFind (fun e -> e.Game.Id = id) with
+                    | Some entry -> return entry.Game
+                    | None -> return featured.Head
+                | Choice2Of2 _ -> return featured.Head
+        | None -> return featured.Head
+    }
+
+let loadStartupGame () =
+    async {
+        let! game = startupGame ()
+
+        let progress received total =
+            if not started then
+                showOverlay (loadingText received total)
+
+        match! fetchRom game progress |> Async.Catch with
+        | Choice1Of2 bytes when not started ->
+            startupRom <- Some bytes
+            showOverlay "Press any<br>button to start"
+            // An unknown ?game= falls back to the demo, and the URL follows.
+            markCurrent (Some game) gameParam.IsSome
+            document.addEventListener ("click", onFirstInteraction)
+            document.addEventListener ("keydown", onFirstInteraction)
+        | Choice2Of2 _ when not started -> showOverlay "Error!<br>Couldn't load game"
+        | _ -> ()
+    }
+    |> Async.StartImmediate
+
+loadStartupGame ()

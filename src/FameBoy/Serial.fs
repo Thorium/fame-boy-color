@@ -43,6 +43,8 @@ type LinkArbiter() =
 type SerialState =
     { mutable Counter: int
       mutable IsTransferring: bool
+      /// Whether the transfer in progress was started on the internal clock.
+      mutable IsMasterTransfer: bool
       /// Outgoing byte to send to the link partner, latched from SB at
       /// transfer start (master) or refreshed from SB each tick (slave).
       mutable OutgoingByte: uint8
@@ -65,6 +67,7 @@ type SerialState =
 let createSerial () =
     { Counter = 0
       IsTransferring = false
+      IsMasterTransfer = false
       OutgoingByte = 0xFFuy
       LinkArbiter = None
       IsLinkP1 = true
@@ -142,6 +145,14 @@ let stepSerial (state: SerialState) (io: IoController) =
     let isMaster = sc &&& 0x01uy <> 0uy
     let transferRequested = sc &&& 0x80uy <> 0uy
 
+    // A game cancels a transfer by clearing SC bit 7 (typically a listening
+    // slave that turns into a sender: SC=0x80, then SC=0x01, SB=data,
+    // SC=0x81). Switching clock source restarts the transfer as well, so a
+    // new byte is never sent with the counter and SB latched for the old one.
+    if state.IsTransferring && (not transferRequested || isMaster <> state.IsMasterTransfer) then
+        state.IsTransferring <- false
+        state.Counter <- 0
+
     if state.IsTransferring then
         if isMaster then
             // Master drives the clock. Track the slave's live SB so when
@@ -169,6 +180,7 @@ let stepSerial (state: SerialState) (io: IoController) =
             state.OutgoingByte <- io.Registers[Io.Sb]
     elif transferRequested then
         state.IsTransferring <- true
+        state.IsMasterTransfer <- isMaster
         state.Counter <- 0
         state.OutgoingByte <- io.Registers[Io.Sb]
 
@@ -178,6 +190,12 @@ let stepSerial (state: SerialState) (io: IoController) =
 /// not here, to keep master/slave receive timing symmetric.
 let exchangeSerial (_serial1: SerialState) (_io1: IoController) (_serial2: SerialState) (_io2: IoController) =
     ()
+
+/// How far player 2's console boots behind player 1's, in M-cycles (half a
+/// second). Consoles are never switched on at the same instant, and some
+/// games assign player roles by boot order: the console already listening
+/// on its title screen receives the latecomer's first byte.
+let linkBootDelayCycles = cpuFrequency / 2
 
 /// Wire two serial states together as link-cable peers, sharing one
 /// arbiter. Roles are decided dynamically at runtime by whichever side
