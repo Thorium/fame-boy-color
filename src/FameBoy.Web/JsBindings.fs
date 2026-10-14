@@ -14,6 +14,11 @@ let fetch (url: string) : JS.Promise<IResponse> = jsNative
 type IAudioContext =
     abstract currentTime: float
     abstract destination: obj
+    /// "suspended", "running" or "closed".
+    abstract state: string
+
+[<Emit("$0.resume()")>]
+let resumeAudioContext (ctx: IAudioContext) : unit = jsNative
 
 type IGainNode = interface end
 type IAudioBuffer = abstract duration: float

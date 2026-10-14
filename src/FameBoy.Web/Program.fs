@@ -39,9 +39,13 @@ let frameDrivenParam =
      | Some _ -> true
      | _ -> false
 
+/// Phones and tablets: touch is the primary input. Two consoles don't fit their
+/// screen, so link mode is off there.
+let isTouchDevice: bool = window?matchMedia("(hover: none) and (pointer: coarse)")?matches
+
 let linkModeParam =
     match URLSearchParams.Create(window.location.search).get "link" with
-    | Some _ -> true
+    | Some _ -> not isTouchDevice
     | Option.None -> false
 
 let screenCanvas = getElement "screen" :?> HTMLCanvasElement
@@ -269,7 +273,7 @@ let startEmulator bytes =
             getJoypadState2 () |> applyJoypadState2
         | None -> ()
         
-        let frameDriven = frameDrivenParam || isUserMuted ()
+        let frameDriven = frameDrivenParam || isUserMuted () || not (isRunning ())
 
         if frameDriven then
             let cycles = Math.Min(targetCyclesPerMs * dt, maxCyclesPerFrame)
@@ -330,6 +334,11 @@ let startEmulator bytes =
 
     currentAnimationFrame <- window.requestAnimationFrame (runEmulator 0) |> Some
 
+// A game picked from the shelf starts after its download, outside the tap, so
+// audio is unlocked by the gestures themselves.
+for gesture in [ "pointerup"; "touchend"; "click"; "keydown" ] do
+    window.addEventListener (gesture, (fun _ -> unlock ()), true)
+
 window.addEventListener ("beforeunload", fun _ -> persistCurrentSave ())
 window.addEventListener ("pagehide", fun _ -> persistCurrentSave ())
 document.addEventListener ("visibilitychange", fun _ -> if document.visibilityState = "hidden" then persistCurrentSave ())
@@ -372,6 +381,9 @@ if linkModeParam then
 // Link mode toggle
 let linkModeToggle = document.getElementById "link-mode-toggle" :?> HTMLInputElement
 linkModeToggle.``checked`` <- linkModeParam
+
+if isTouchDevice then
+    linkModeToggle.parentElement?classList?add "hidden"
 
 linkModeToggle.addEventListener (
     "change",
@@ -596,13 +608,14 @@ let private playGame (game: Game) =
     |> Async.StartImmediate
 
 /// The "2P" badge of a link-cable game. Outside link mode it reloads straight
-/// into a two-player game.
+/// into a two-player game, except on touch devices, which have no link mode.
 let private linkBadge (game: Game) =
-    let badge = document.createElement (if linkModeParam then "span" else "a")
+    let isLink = not (linkModeParam || isTouchDevice)
+    let badge = document.createElement (if isLink then "a" else "span")
     badge.className <- "game-badge"
     badge.textContent <- "2P"
 
-    if linkModeParam then
+    if not isLink then
         badge.title <- "Two players over the link cable"
     else
         badge.setAttribute ("href", $"?link=1&game={game.Id}")

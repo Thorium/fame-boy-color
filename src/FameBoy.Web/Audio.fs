@@ -61,6 +61,19 @@ let ensureInitialized () =
         state.Ctx <- Some ctx
         state.Gain <- Some gain
 
+/// Mobile browsers start an AudioContext suspended and only resume it inside a
+/// user gesture handler, so every tap and key press calls this.
+let unlock () =
+    ensureInitialized ()
+
+    match state.Ctx with
+    | Some ctx when ctx.state = "suspended" -> resumeAudioContext ctx
+    | _ -> ()
+
+/// A suspended context's clock stands still, so it can't pace the emulator.
+let isRunning () =
+    state.Ctx |> Option.exists (fun ctx -> ctx.state = "running")
+
 let resetPlayback () =
     state.NextPlayTime <- 0.0
 
