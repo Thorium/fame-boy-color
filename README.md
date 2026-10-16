@@ -8,7 +8,7 @@ A Game Boy and Game Boy Color emulator written in F#. It runs in the browser (co
 
 **📱 Install as an app:** open the same link on your phone or tablet and tap **Install app** in the banner (Android / Chrome), or **Share → Add to Home Screen** (iPhone / iPad). The emulator then launches full-screen from your home screen and works offline.
 
-![Tetris DX two-player link game: lines sent by the other player at the bottom of both fields, their gap kept open](./assets/tetris-dx-link.png) ![Tetris DX two-player link game: a Tetris sends four lines across, and the other player clears them through their gap and sends them back](./assets/tetris-dx-link.gif)
+![Tetris DX two-player link game: a Tetris sends four lines across, and the other player clears them through their gap and sends them back](./assets/tetris-dx-link.gif)
 
 ## Origins
 
