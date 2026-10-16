@@ -78,8 +78,8 @@ let private bindPointerButtons
     (buttonMap: Map<string, JoypadButton>)
     (setPressed: (Set<JoypadButton> -> Set<JoypadButton>) -> unit) =
     buttonMap
-    |> Map.iter (fun id button ->
-        let el = document.getElementById id
+    |> Map.iter (fun pid button ->
+        let el = document.getElementById pid
 
         el.addEventListener (
             "pointerdown",

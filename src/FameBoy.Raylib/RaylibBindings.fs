@@ -33,6 +33,9 @@ let isKeyPressed keyValue : bool =
 let windowShouldClose () : bool =
     Raylib.WindowShouldClose() |> CBool.op_Implicit
 
+let isAudioDeviceReady () : bool =
+    Raylib.IsAudioDeviceReady() |> CBool.op_Implicit
+
 let isAudioStreamProcessed stream : bool =
     Raylib.IsAudioStreamProcessed stream |> CBool.op_Implicit
 

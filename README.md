@@ -53,11 +53,12 @@ There are still gaps against the real hardware that may or may not get closed:
 ### Desktop
 
 ``` sh
-dotnet run --project src/FameBoy.Raylib -- <rom-file-path> [--link] [scale]
+dotnet run --project src/FameBoy.Raylib -- <rom-file-path> [--link] [--no-audio] [scale]
 ```
 
 - `scale` is an optional positive integer that controls the window size multiplier (default: 4).
 - `--link` enables link cable multiplayer (two instances side-by-side in one window).
+- `--no-audio` runs without sound. Without an audio device the emulator does this by itself, keeping time with the clock instead of the sound card.
 - Press **F11** to toggle fullscreen.
 - Cartridge SRAM is saved to a `.sav` file with the same name as the ROM, next to it.
 

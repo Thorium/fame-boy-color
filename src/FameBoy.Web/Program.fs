@@ -65,8 +65,8 @@ let imageData = ctx.createImageData (Screen.width, Screen.height)
 let screen2Canvases =
     if linkModeParam then
         [ "screen2"; "screen2-wide" ]
-        |> List.choose (fun id ->
-            match document.getElementById id with
+        |> List.choose (fun pid ->
+            match document.getElementById pid with
             | null -> None
             | el ->
                 let canvas = el :?> HTMLCanvasElement

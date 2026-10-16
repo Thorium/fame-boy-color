@@ -4,6 +4,7 @@ open FameBoy.Apu
 open FameBoy.Debug
 open FameBoy.Emulator
 open FameBoy.Hardware
+open FameBoy.IoController
 open FameBoy.Joypad
 open FameBoy.Raylib
 open FameBoy.Raylib.Graphics.GraphicsPipeline
@@ -14,9 +15,10 @@ open Raylib_cs
 
 let args = Environment.GetCommandLineArgs()
 
-// Parse arguments: fame-boy <rom-file> [--link] [scale]
+// Parse arguments: fame-boy <rom-file> [--link] [--no-audio] [scale]
 let mutable romPath = ""
 let mutable scaleArg: int option = None
+let mutable noAudio = false
 
 let nonFlagArgs =
     args
@@ -28,14 +30,18 @@ let nonFlagArgs =
         elif a = "--cgb-trace" then
             CgbTrace.Enabled <- true
             false
+        elif a = "--no-audio" then
+            noAudio <- true
+            false
         else
             true)
 
 if nonFlagArgs.Length < 1 || nonFlagArgs.Length > 2 then
-    eprintfn "Usage: fame-boy <rom-file> [--link] [scale]"
+    eprintfn "Usage: fame-boy <rom-file> [--link] [--no-audio] [scale]"
     eprintfn ""
     eprintfn "Options:"
     eprintfn "  --link    Run two linked instances side-by-side (local multiplayer)"
+    eprintfn "  --no-audio  Run without sound, paced by the clock instead of the audio device"
     eprintfn "  --cgb-trace  Print sparse CGB palette/HDMA diagnostics"
     eprintfn "  scale     Window scale factor (positive integer, default 4)"
     eprintfn ""
@@ -76,7 +82,16 @@ let icon = Raylib.LoadImage("icon.png")
 Raylib.SetWindowIcon(icon)
 Raylib.UnloadImage(icon)
 Raylib.SetTargetFPS 120
-Raylib.InitAudioDevice()
+if not noAudio then
+    Raylib.InitAudioDevice()
+
+/// The audio stream paces the emulator. Without an audio device it never asks
+/// for samples, so the clock paces it instead.
+let audioReady = isAudioDeviceReady ()
+
+if not (noAudio || audioReady) then
+    eprintfn "No audio device: running without sound."
+
 Raylib.SetAudioStreamBufferSizeDefault(bufferSize)
 
 let audioBuffer = Array.zeroCreate<float32> bufferSize
@@ -89,6 +104,26 @@ let tryQueueAudio (apu: Apu) stepEmulator =
 
         readResampledBuffer apu audioBuffer audioSamplingRate
         updateAudioStream audioStream audioBuffer
+
+/// Normal-speed M-cycles owed for the time already drawn.
+let mutable cycleBudget = 0.0
+
+/// Runs the emulator for the last frame's wall-clock time, at most 1/30 s so a
+/// stall (window drag, breakpoint) doesn't fast-forward afterwards.
+let runForFrameTime (io: IoController) (stepEmulator: unit -> int) =
+    let dt = min (float (Raylib.GetFrameTime())) (1.0 / 30.0)
+    cycleBudget <- cycleBudget + dt * float cpuFrequency
+
+    while cycleBudget > 0.0 do
+        let mCycles = float (stepEmulator ())
+        // The budget is in normal-speed cycles; a double-speed CPU runs two per cycle.
+        cycleBudget <- cycleBudget - (if io.DoubleSpeed then mCycles / 2.0 else mCycles)
+
+let runEmulator (apu: Apu) (io: IoController) stepEmulator =
+    if audioReady then
+        tryQueueAudio apu stepEmulator
+    else
+        runForFrameTime io stepEmulator
 
 let bytes = File.ReadAllBytes romPath
 let savePath = Path.ChangeExtension(romPath, ".sav")
@@ -129,7 +164,8 @@ if Config.linkMode then
     // on first SC=0x81 write from either device. See Serial.fs.
     pairLink serial1 io1 serial2 io2
 
-    Raylib.PlayAudioStream audioStream
+    if audioReady then
+        Raylib.PlayAudioStream audioStream
 
     let mutable cycles1 = 0L
     // Player 2 waits until player 1 has run this long.
@@ -146,7 +182,7 @@ if Config.linkMode then
         applyJoypadState2 joypadState2
 
         // Only use P1 audio in link mode
-        tryQueueAudio apu1 (fun () ->
+        runEmulator apu1 io1 (fun () ->
             let c1 = stepEmulator1 ()
             cycles1 <- cycles1 + int64 c1
 
@@ -178,12 +214,13 @@ if Config.linkMode then
     close ()
 else
     // Single player mode
-    let ppu, apu, _, _, stepEmulator, applyJoypadState, _, memory =
+    let ppu, apu, _, io, stepEmulator, applyJoypadState, _, memory =
         createEmulatorWithMemory bytes 4096 (fun () -> joypadState)
 
     tryLoadSave memory.Cartridge.Ram
 
-    Raylib.PlayAudioStream audioStream
+    if audioReady then
+        Raylib.PlayAudioStream audioStream
 
     while (not (windowShouldClose ())) do
         if isKeyPressed KeyboardKey.F11 then
@@ -193,7 +230,7 @@ else
         joypadState <- getJoypadState ()
         applyJoypadState joypadState
 
-        tryQueueAudio apu stepEmulator
+        runEmulator apu io stepEmulator
 
         beginDrawing ()
         Raylib.ClearBackground(Color.Black)

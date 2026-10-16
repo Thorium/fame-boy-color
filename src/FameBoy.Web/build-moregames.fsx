@@ -287,8 +287,8 @@ let entries =
     Array.zip candidates reachable
     |> Array.choose (fun (entry, ok) ->
         if not ok then
-            let id = entry["id"]
-            eprintfn $"  skipped {id}: no ROM at {romUrl entry}"
+            let pid = entry["id"]
+            eprintfn $"  skipped {pid}: no ROM at {romUrl entry}"
 
         if ok then Some entry else None)
     |> Array.sortBy (fun o -> o["title"].ToString().ToLowerInvariant())
