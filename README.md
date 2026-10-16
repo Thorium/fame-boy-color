@@ -8,7 +8,7 @@ A Game Boy and Game Boy Color emulator written in F#. It runs in the browser (co
 
 **📱 Install as an app:** open the same link on your phone or tablet and tap **Install app** in the banner (Android / Chrome), or **Share → Add to Home Screen** (iPhone / iPad). The emulator then launches full-screen from your home screen and works offline.
 
-![Tetris DX two-player link game: a Tetris sends four lines across, and the other player clears them through their gap and sends them back](./assets/tetris-dx-link.gif)
+![Tetris DX two-player link game](./assets/tetris-dx-link.gif)
 
 ## Origins
 
@@ -144,3 +144,42 @@ The web version also has on-screen buttons for mouse and touch; a keyboard is st
 The Fame Boy Color source code is licensed under the [MIT License](./LICENSE); the original copyright belongs to Nick Kossolapov.
 
 This project redistributes an unmodified copy of [Tobu Tobu Girl DX](https://github.com/SimonLarsen/tobutobugirl-dx) by Simon Larsen as the bundled demo game, included under its original MIT/CC-BY licensing terms and not covered by the above license.
+
+### Games
+
+This repository doesn't contain any copyrighted games / ROMs.
+The web page only auto-fetches non-Nintendo games with open licenses.
+A few of my favourite games when I was a kid, which are not included in this repository:
+
+| Game Boy | Link support  | GB Color |
+|----------|-----------------|------|
+| Boxxle |  |  |
+| Boulder Dash | x |  |
+| Bubbble Bobble | x |  |
+| Bubbble Bobble GBC |  | x |
+| Canon Fodder |  | x |
+| Chessmaster | x | x |
+| Commander Keen |  | x |
+| Double Dragon 3 | x |  |
+| DynaBlaster | x |  |
+| Hunt of the Red October | x |  |
+| Joust |  |  |
+| Mortal Kombat |  |  |
+| Motocross Maniacs 2 | x | x | 
+| Pac-Man | x | x |
+| Populous |  |  |
+| Prince of Persia |  | x |
+| Rampart | x | x |
+| Revenge of Gator | x |  |
+| Semsible Soccer |  |  |
+| Space Invaders | x | x |
+| Speed Ball 2 |  |  |
+| Super Mario Bros | x | x |
+| Super Mario Land |  |  |
+| Tennis | x |  |
+| Tetris | x |  |
+| Tetris DX | x | x | 
+| Wings of Fury |  | x |
+| Xenon 2 |  |  |
+
+![Motocross Maniacs 2](./assets/mm2.gif)
